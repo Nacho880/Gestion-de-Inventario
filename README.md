@@ -94,20 +94,6 @@ proyecto_principal/
 └── proyecto_principal/ # Configuración principal de Django
 ```
 
-## 🔧 Configuración de Variables de Entorno
-
-Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
-
-```env
-DEBUG=True
-SECRET_KEY=tu_clave_secreta_aqui
-DATABASE_NAME=ferreteria_db
-DATABASE_USER=tu_usuario_mysql
-DATABASE_PASSWORD=tu_password_mysql
-DATABASE_HOST=localhost
-DATABASE_PORT=3306
-```
-
 ## 📝 Comandos Útiles
 
 ### Desarrollo
