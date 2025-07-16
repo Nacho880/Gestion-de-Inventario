@@ -1,0 +1,77 @@
+{% extends "usuario/base_login.html" %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block heading %}Iniciar Sesión{% endblock %}
+
+{% block messages %}
+  {% if login_message %}
+    <div class="mb-3">
+      <div class="alert alert-{{ login_message_type }} alert-dismissible fade show" role="alert">
+        {{ login_message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block form_fields %}
+  <div class="mb-3">
+    <label for="username" class="form-label">Nombre de usuario</label>
+    <input
+      type="text"
+      class="form-control"
+      id="username"
+      name="username"
+      required
+      placeholder="Ingresa tu usuario"
+      autocomplete="off"
+    />
+  </div>
+
+  <div class="mb-3">
+    <label for="password" class="form-label">Contraseña</label>
+    <input
+      type="password"
+      class="form-control"
+      id="password"
+      name="password"
+      required
+      placeholder="********"
+      autocomplete="off"
+    />
+  </div>
+
+  <div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" id="showPassword" />
+    <label class="form-check-label" for="showPassword">
+      Mostrar contraseña
+    </label>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const password = document.getElementById('password');
+      const showPasswordCheckbox = document.getElementById('showPassword');
+
+      showPasswordCheckbox.addEventListener('change', function() {
+        password.type = this.checked ? 'text' : 'password';
+      });
+    });
+  </script>
+{% endblock %}
+
+{% block button_text %}<i class="bi bi-box-arrow-in-right"></i> Entrar{% endblock %}
+
+{% block bottom_text %}
+  <div class="text-center">
+    <span>¿Olvidaste tu contraseña?</span>
+    <a href="{% url 'verificacion' %}" class="fw-semibold text-primary ms-1">Restablecer</a>
+  </div>
+  {% if not existen_usuarios %}
+    <div class="text-center" style="margin-top: 5px;">
+      <span>¿Primera vez usando el sistema?</span>
+      <a href="{% url 'crear_primer_usuario' %}" class="fw-semibold text-primary ms-1">Crear Usuario</a>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,245 @@
+{% extends 'home/base_main.html' %}
+{% load static %}
+
+{% block title %}Categorías - Inventario{% endblock %}
+
+{% block content %}
+<h1 class="fw-bold mb-0 mt-6 mb-2">Categorías</h1>
+
+<div class="action-bar d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <button
+      type="button"
+      class="btn btn-primary"
+      id="addCategoriaBtn"
+      data-bs-toggle="modal"
+      data-bs-target="#addCategoryModal"
+      title="Agregar categoría"
+    >
+      <i class="bi bi-plus-circle"></i>
+    </button>
+
+    <input
+      type="text"
+      class="form-control"
+      placeholder="Buscar categoría..."
+      aria-label="Buscar categoría"
+      id="searchCategorias"
+      style="max-width: 300px;"
+    />
+  </div>
+</div>
+
+{% if categorias %}
+<div class="card shadow-lg border-0 mb-4">
+  <div class="card-header bg-gradient text-white fw-bold" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);">
+    <i class="bi bi-tags me-2"></i>Lista de Categorías
+  </div>
+  <div class="card-body px-4 py-4">
+    <div class="table-responsive">
+      <table id="tablaCategorias" class="table datatable table-bordered table-striped table-hover align-middle" style="width: 100%;">
+    <thead class="table-dark">
+      <tr>
+        <th class="text-center">Nombre</th>
+        <th class="text-center">Descripción</th>
+        <th class="text-center">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for categoria in categorias %}
+      <tr>
+        <td class="text-center align-middle">
+          {% if categoria.nombre %}
+            {{ categoria.nombre }}
+          {% else %}
+            <span class="text-muted fst-italic">Sin nombre</span>
+          {% endif %}
+        </td>
+        <td class="text-center align-middle" title="{% if categoria.descripcion %}{{ categoria.descripcion }}{% else %}Sin descripción{% endif %}">
+          {% if categoria.descripcion %}
+            {{ categoria.descripcion|slice:":80" }}{% if categoria.descripcion|length > 50 %}...{% endif %}
+          {% else %}
+            <span class="text-muted fst-italic">Sin descripción</span>
+          {% endif %}
+        </td>
+        <td class="text-center align-middle">
+          <div class="btn-group">
+            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editCategoryModal"
+              data-id="{{ categoria.id_categoria }}" data-nombre="{{ categoria.nombre|escapejs }}"
+              data-descripcion="{{ categoria.descripcion|default:'' }}" title="Editar">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <a href="{% url 'categoria_producto' categoria.id_categoria %}" class="btn btn-info btn-sm" title="Ver productos">
+              <i class="bi bi-box-seam"></i>
+            </a>
+            <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteCategoryModal"
+              data-id="{{ categoria.id_categoria }}" data-nombre="{{ categoria.nombre|escapejs }}" title="Eliminar">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  </div>
+</div>
+{% else %}
+  <div class="card shadow-lg border-0">
+    <div class="card-body text-center px-4 py-4">
+      <div class="alert alert-info mb-0">No hay categorías registradas.</div>
+    </div>
+  </div>
+{% endif %}
+
+<!-- Modal Añadir Categoría -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <form method="post" action="{% url 'agregar_categoria' %}">
+        {% csrf_token %}
+        <div class="modal-header bg-primary text-white rounded-top-4">
+          <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i> Añadir Categoría</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body px-4 py-3">
+          <div class="mb-3">
+            <label for="add-nombre" class="form-label fw-semibold">Nombre</label>
+            <input type="text" id="add-nombre" name="nombre" class="form-control rounded-pill px-3" maxlength="100" required placeholder="Ej: Pinturas, Electricidad, Jardinería" />
+            <div class="form-text text-end">
+              <span id="add-nombre-counter">0</span>/100
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="add-descripcion" class="form-label fw-semibold">Descripción</label>
+            <textarea id="add-descripcion" name="descripcion" class="form-control rounded-3 px-3" rows="4" maxlength="1000" placeholder="Ej: Productos para pintar, materiales eléctricos, herramientas de jardín"></textarea>
+            <div class="form-text text-end">
+              <span id="add-descripcion-counter">0</span>/1000
+            </div>
+          </div>
+          <!-- Contenedor fijo para el mensaje de error -->
+          <div class="modal-alert-container" style="min-height: 48px;"></div>
+        </div>
+        <div class="modal-footer px-4 pb-4">
+          <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">Guardar</button>
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Categoría -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <form method="post" id="editCategoryForm">
+        {% csrf_token %}
+        <div class="modal-header bg-warning text-dark rounded-top-4">
+          <h5 class="modal-title fw-bold"><i class="bi bi-pencil me-2"></i> Editar Categoría</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body px-4 py-3">
+          <input type="hidden" name="id" id="edit-id" />
+          <div class="mb-3">
+            <label for="edit-nombre" class="form-label fw-semibold">Nombre</label>
+            <input type="text" id="edit-nombre" name="nombre" class="form-control rounded-pill px-3" maxlength="100" required />
+            <div class="form-text text-end">
+              <span id="edit-nombre-counter">0</span>/100
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="edit-descripcion" class="form-label fw-semibold">Descripción</label>
+            <textarea id="edit-descripcion" name="descripcion" class="form-control rounded-3 px-3" rows="4" maxlength="1000"></textarea>
+            <div class="form-text text-end">
+              <span id="edit-descripcion-counter">0</span>/1000
+            </div>
+          </div>
+          <!-- Contenedor fijo para el mensaje de error -->
+          <div class="modal-alert-container" style="min-height: 48px;"></div>
+        </div>
+        <div class="modal-footer px-4 pb-4">
+          <button type="submit" class="btn btn-warning rounded-pill px-4 fw-semibold">Guardar</button>
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Eliminar Categoría -->
+<div class="modal fade" id="deleteCategoryModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <form method="post" id="deleteCategoryForm">
+        {% csrf_token %}
+        <div class="modal-header bg-danger text-white rounded-top-4">
+          <h5 class="modal-title fw-bold"><i class="bi bi-trash me-2"></i> Confirmar Eliminación</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body px-4 py-3">
+          <input type="hidden" name="id" id="delete-id" />
+          <p>¿Está seguro que desea eliminar la categoría <strong id="delete-nombre"></strong>?</p>
+        </div>
+        <div class="modal-footer px-4 pb-4">
+          <button type="submit" class="btn btn-danger rounded-pill px-4 fw-semibold">Eliminar</button>
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.card-header.bg-gradient {
+  background: #fff !important;
+  color: #222 !important;
+  font-weight: 600;
+  font-size: 1.08rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+  border-bottom: 1.5px solid #e5e7eb;
+  letter-spacing: 0.01em;
+  box-shadow: none;
+}
+
+/* Ancho fijo para la columna de acciones */
+#tablaCategorias th:last-child,
+#tablaCategorias td:last-child {
+  width: 150px !important;
+  min-width: 150px !important;
+  max-width: 150px !important;
+}
+
+/* Compactar botones de acción solo en categorías */
+.btn-group .btn {
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  border-radius: 0 !important;
+}
+.btn-group .btn:first-child {
+  border-top-left-radius: 0.5rem !important;
+  border-bottom-left-radius: 0.5rem !important;
+}
+.btn-group .btn:last-child {
+  border-top-right-radius: 0.5rem !important;
+  border-bottom-right-radius: 0.5rem !important;
+}
+</style>
+<script src="{% static 'categoria/js/categorias.js' %}"></script>
+{% endblock %}
+
+
+
+
+
+
+
+
+
+
+

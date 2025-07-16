@@ -1,0 +1,252 @@
+{% extends 'home/base_main.html' %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Inicio - Inventario{% endblock %}
+
+{% block content %}
+
+<h1 class="fw-bold mb-0 mt-6 mb-2">Inicio</h1>
+
+<!-- Barra superior con reloj -->
+<div class="action-bar d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <div id="reloj" class="fw-bold fs-5 text-primary"></div>
+    </div>
+    <!-- Eliminado el nombre de usuario -->
+</div>
+
+<!-- Tarjetas resumen -->
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-lg border-0 h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-box-seam fs-1 mb-2 text-primary"></i>
+                <h5 class="card-title">Total Productos</h5>
+                <p class="display-6 fw-bold text-primary">{{ productos|length }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-lg border-0 h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-exclamation-triangle fs-1 mb-2 text-warning"></i>
+                <h5 class="card-title">Bajo Stock</h5>
+                <p class="display-6 fw-bold text-warning">{{ productos_bajo_stock|length|default:0 }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-lg border-0 h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-x-circle fs-1 mb-2 text-danger"></i>
+                <h5 class="card-title">Agotados</h5>
+                <p class="display-6 fw-bold text-danger">{{ productos_agotados }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alertas -->
+{% if productos_bajo_stock %}
+<div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <strong>Atención:</strong> Hay {{ productos_bajo_stock|length }} producto(s) con bajo stock.
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+</div>
+{% endif %}
+
+{% if productos_agotados > 0 %}
+<div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+    <i class="bi bi-x-circle me-2"></i>
+    <strong>Urgente:</strong> Hay {{ productos_agotados }} producto(s) agotado(s).
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+</div>
+{% endif %}
+
+<!-- Accesos directos -->
+<div class="card shadow-lg border-0 mb-4">
+    <div class="card-header bg-gradient text-white fw-bold" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);">
+        <i class="bi bi-lightning me-2"></i>Acciones Rápidas
+    </div>
+    <div class="card-body px-4 py-4">
+        <div class="row">
+            <div class="col-md-4 mb-2">
+                <a href="{% url 'compras' %}" class="btn btn-success w-100 py-3 btn-texto-negro">
+                    <i class="bi bi-plus-circle me-2"></i>Realizar Compra
+                </a>
+            </div>
+            <div class="col-md-4 mb-2">
+                <a href="{% url 'ventas' %}" class="btn btn-danger w-100 py-3 btn-texto-negro">
+                    <i class="bi bi-dash-circle me-2"></i>Realizar Venta
+                </a>
+            </div>
+            <div class="col-md-4 mb-2">
+                <a href="{% url 'productos' %}" class="btn btn-primary w-100 py-3 btn-texto-negro">
+                    <i class="bi bi-box-seam me-2"></i>Gestionar Productos
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="fw-bold mb-3">Últimos Movimientos</h2>
+
+
+
+{% if movimientos %}
+<div class="card shadow-lg border-0 mb-4">
+  <div class="card-header bg-gradient text-white fw-bold" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);">
+    <i class="bi bi-clock-history me-2"></i>Historial de Movimientos
+  </div>
+  <div class="card-body px-4 py-4">
+    <div class="table-responsive">
+      <table id="tablaMovimientos" class="table datatable table-bordered table-striped table-hover align-middle text-center" style="width: 100%;">
+    <thead class="table-dark">
+      <tr>
+        <th class="text-center">Producto</th>
+        <th class="text-center">Tipo de Movimiento</th>
+        <th class="text-center">Cantidad</th>
+        <th class="text-center">Precio</th>
+        <th class="text-center">Fecha</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for mov in movimientos %}
+      <tr>
+        <td class="text-center">{{ mov.nombre_producto }}</td>
+        <td class="text-center">
+          {% if mov.tipo == 'C' %}
+            Compra
+          {% elif mov.tipo == 'V' %}
+            Venta
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td class="text-center">{{ mov.cantidad }}</td>
+        <td class="text-center">${{ mov.precio_unitario|floatformat:0|intcomma }}</td>
+        <td class="text-center">{{ mov.fecha|date:"d/m/Y" }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  </div>
+</div>
+{% else %}
+  <div class="card shadow-lg border-0">
+    <div class="card-body text-center px-4 py-4">
+      <div class="alert alert-info mb-0">No hay movimientos recientes.</div>
+    </div>
+  </div>
+{% endif %}
+
+{% if productos_bajo_stock %}
+<!-- Modal de alerta de stock bajo -->
+<div class="modal fade" id="modalStockBajo" tabindex="-1" aria-labelledby="stockBajoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header bg-warning text-dark rounded-top-4">
+        <h5 class="modal-title fw-bold" id="stockBajoLabel"><i class="bi bi-exclamation-triangle me-2"></i> Alerta de Stock Bajo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <p class="fw-semibold">Productos con bajo stock:</p>
+        <div style="max-height: 300px; overflow-y: auto;">
+          <ul class="list-unstyled">
+            {% for producto in productos_bajo_stock %}
+              <li class="mb-2">
+                <i class="bi bi-exclamation-circle text-warning me-2"></i>
+                <strong>{{ producto.nombre }}</strong> — quedan {{ producto.stock_actual }} <span class="text-muted">(stock actual)</span> | {{ producto.stock_minimo }} <span class="text-muted">(stock mínimo)</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer px-4 pb-4">
+        <button class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+        <button class="btn btn-outline-danger rounded-pill px-4 fw-semibold" id="deshabilitarStockBajo">No mostrar más</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (!localStorage.getItem('stockBajoDeshabilitado')) {
+      const modal = new bootstrap.Modal(document.getElementById('modalStockBajo'));
+      modal.show();
+    }
+    const btnDeshabilitar = document.getElementById('deshabilitarStockBajo');
+    if (btnDeshabilitar) {
+      btnDeshabilitar.addEventListener('click', function () {
+        localStorage.setItem('stockBajoDeshabilitado', '1');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalStockBajo'));
+        if (modal) modal.hide();
+        mostrarBotonHabilitar();
+      });
+    }
+    mostrarBotonHabilitar();
+  });
+  function mostrarBotonHabilitar() {
+    let btn = document.getElementById('habilitarStockBajo');
+    if (localStorage.getItem('stockBajoDeshabilitado')) {
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'habilitarStockBajo';
+        btn.className = 'btn btn-warning mb-3';
+        btn.innerHTML = '<i class="bi bi-bell"></i> Habilitar notificaciones de stock bajo';
+        btn.onclick = function() {
+          localStorage.removeItem('stockBajoDeshabilitado');
+          location.reload();
+        };
+        const h1 = document.querySelector('h1');
+        if (h1) h1.parentNode.insertBefore(btn, h1.nextSibling);
+      }
+    } else {
+      if (btn) btn.remove();
+    }
+  }
+</script>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.card-header.bg-gradient {
+  background: #fff !important;
+  color: #222 !important;
+  font-weight: 600;
+  font-size: 1.08rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+  border-bottom: 1.5px solid #e5e7eb;
+  letter-spacing: 0.01em;
+  box-shadow: none;
+}
+</style>
+<script src="{% static 'home/js/main.js' %}"></script>
+<script src="{% static 'home/js/datatable-enhancements.js' %}"></script>
+
+<!-- Reloj en tiempo real -->
+<script>
+function actualizarReloj() {
+    const ahora = new Date();
+    const opciones = { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+    };
+    const fechaHora = ahora.toLocaleDateString('es-ES', opciones);
+    document.getElementById('reloj').textContent = fechaHora;
+}
+setInterval(actualizarReloj, 1000);
+actualizarReloj();
+</script>
+{% endblock %}
+
+

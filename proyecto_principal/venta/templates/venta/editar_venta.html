@@ -1,0 +1,466 @@
+{% extends 'home/base_main.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Editar Venta{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.card-header.bg-gradient {
+  background: #fff !important;
+  color: #222 !important;
+  font-weight: 600;
+  font-size: 1.08rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+  border-bottom: 1.5px solid #e5e7eb;
+  letter-spacing: 0.01em;
+  box-shadow: none;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <!-- Header con título y botones -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="fw-bold mb-0 mt-6 mb-2">Editar Venta #{{ venta.numero_venta|default:venta.id_venta }}</h1>
+    <div class="btn-group">
+      <a href="{% url 'ventas' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Volver a ventas
+      </a>
+    </div>
+  </div>
+  
+  <!-- Información importante -->
+  <div class="alert alert-info mb-4">
+    <h5 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Instrucciones para editar venta</h5>
+    <p class="mb-2"><strong>Para realizar un reembolso:</strong></p>
+    <ul class="mb-0">
+      <li>Ingresa la cantidad que deseas <strong>mantener</strong> en la venta (no la cantidad a reembolsar)</li>
+      <li>Si reduces la cantidad, se generará automáticamente un reembolso por la diferencia</li>
+      <li>Si aumentas la cantidad, se agregarán más productos a la venta (si hay stock disponible)</li>
+    </ul>
+    <div class="alert alert-warning mt-3 mb-0 py-2 px-3" style="font-size:0.98em;">
+      <i class="bi bi-arrow-repeat me-1"></i>
+      <strong>Nota:</strong> Las unidades reembolsadas se devuelven automáticamente al stock del producto.
+    </div>
+  </div>
+  
+  <div class="card shadow-lg rounded-4">
+    <div class="card-header bg-gradient text-white fw-bold">
+      <i class="bi bi-pencil-square me-2"></i>Editar Venta
+    </div>
+    <div class="card-body p-4">
+      <form method="post">
+        {% csrf_token %}
+        <h4 class="fw-bold mb-3 text-primary"><i class="bi bi-box-seam me-2"></i>Productos vendidos</h4>
+        <div class="table-responsive mb-3">
+          <table class="table table-bordered align-middle text-center mb-0" id="tabla-productos-edit">
+            <thead class="table-light">
+              <tr>
+                <th>Producto</th>
+                <th>Código SKU</th>
+                <th>Cantidad original</th>
+                <th>Cantidad a mantener</th>
+                <th>Precio unitario</th>
+                <th>Subtotal</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for detalle in detalles %}
+              <tr class="producto-row" data-producto-id="{{ detalle.producto.id_producto }}">
+                <td>
+                  <span class="fw-semibold">
+                    {% if detalle.producto.nombre and detalle.producto.nombre != '---' and detalle.producto.nombre != '—' and detalle.producto.nombre != '' %}
+                      {{ detalle.producto.nombre }}
+                    {% else %}
+                      <span class="text-muted fst-italic">Sin nombre</span>
+                    {% endif %}
+                  </span>
+                  <br>
+                  <small class="text-muted">Stock: {{ detalle.producto.stock_actual }}</small>
+                </td>
+                <td>
+                  {% with cod=detalle.producto.codigo_set.first %}
+                    {% if cod %}{{ cod.codigo }}{% else %}<span class="text-muted fst-italic">Sin código</span>{% endif %}
+                  {% endwith %}
+                </td>
+                <td class="text-center">
+                  <span class="badge bg-secondary">{{ detalle.cantidad }} unid.</span>
+                </td>
+                <td>
+                  <div class="input-group input-group-sm">
+                    <input type="number" 
+                           name="cantidad_{{ detalle.id_detalle }}" 
+                           value="{{ detalle.cantidad }}" 
+                           min="0" 
+                           max="{{ detalle.cantidad|add:detalle.producto.stock_actual }}"
+                           class="form-control form-control-sm text-center" 
+                           data-cantidad-original="{{ detalle.cantidad }}" 
+                           required />
+                    <span class="input-group-text">unid.</span>
+                  </div>
+                  <div class="reembolso-info mt-1 small text-warning d-none">
+                    <i class="bi bi-arrow-return-left"></i> 
+                    <span class="cantidad-reembolso"></span> unidades a reembolsar
+                  </div>
+                  <div class="agregar-info mt-1 small text-success d-none">
+                    <i class="bi bi-plus-circle"></i> 
+                    <span class="cantidad-agregar"></span> unidades a agregar
+                  </div>
+                </td>
+                <td class="precio-unitario" data-precio="{{ detalle.precio_unitario }}">${{ detalle.precio_unitario|floatformat:0|intcomma }}</td>
+                <td class="subtotal">${{ detalle.subtotal|floatformat:0|intcomma }}</td>
+                <td>
+                  <span class="badge {% if detalle.estado == 'ACTIVO' %}bg-success{% elif detalle.estado == 'PARCIALMENTE_REEMBOLSADO' %}bg-warning{% else %}bg-danger{% endif %}">
+                    {% if detalle.estado == 'PARCIALMENTE_REEMBOLSADO' %}PARCIALMENTE REEMBOLSADO{% else %}{{ detalle.estado|upper }}{% endif %}
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="5" class="text-end">Total venta:</th>
+                <th colspan="2" id="total-venta">${{ venta.total_venta|floatformat:0|intcomma }}</th>
+              </tr>
+              <tr class="table-warning d-none" id="fila-reembolso">
+                <th colspan="5" class="text-end">Total a reembolsar:</th>
+                <th colspan="2" id="total-reembolso">$0.00</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="row g-3 align-items-end mb-0">
+          <div class="col-md-10">
+            <label for="observaciones" class="form-label fw-semibold">Observaciones:</label>
+            <textarea name="observaciones" id="observaciones" class="form-control" rows="2">{% if venta.observaciones and venta.observaciones != '---' and venta.observaciones != '—' and venta.observaciones != '' %}{{ venta.observaciones }}{% endif %}</textarea>
+          </div>
+          <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-warning fw-bold"><i class="bi bi-save me-2"></i>Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Función para actualizar el badge de reembolso y subtotales
+  function actualizarReembolso(input) {
+    const row = input.closest('tr');
+    const cantidadOriginal = parseInt(input.getAttribute('data-cantidad-original') || input.value);
+    const cantidadNueva = parseInt(input.value);
+    const precio = parseFloat(row.querySelector('.precio-unitario').getAttribute('data-precio')) || 0;
+    const badgeReembolso = row.querySelector('.reembolso-info');
+    const badgeAgregar = row.querySelector('.agregar-info');
+    const cantidadReembolso = row.querySelector('.cantidad-reembolso');
+    const cantidadAgregar = row.querySelector('.cantidad-agregar');
+    
+    // Ocultar ambos badges primero
+    badgeReembolso.classList.add('d-none');
+    badgeAgregar.classList.add('d-none');
+    row.classList.remove('table-warning', 'table-success');
+    
+    if (cantidadNueva < cantidadOriginal) {
+      // Hay reembolso
+      const diferencia = cantidadOriginal - cantidadNueva;
+      badgeReembolso.classList.remove('d-none');
+      cantidadReembolso.textContent = diferencia;
+      row.classList.add('table-warning');
+    } else if (cantidadNueva > cantidadOriginal) {
+      // Hay agregado
+      const diferencia = cantidadNueva - cantidadOriginal;
+      badgeAgregar.classList.remove('d-none');
+      cantidadAgregar.textContent = diferencia;
+      row.classList.add('table-success');
+    }
+    
+    // Actualizar totales
+    actualizarTotales();
+  }
+  
+  // Función para actualizar totales
+  function actualizarTotales() {
+    let totalVenta = 0;
+    let totalReembolso = 0;
+    let hayReembolso = false;
+    
+    document.querySelectorAll('.producto-row').forEach(row => {
+      const input = row.querySelector('input[name*="cantidad"]');
+      const cantidadOriginal = parseInt(input.getAttribute('data-cantidad-original')) || 0;
+      const cantidadActual = parseInt(input.value) || 0;
+      const precio = parseFloat(row.querySelector('.precio-unitario').getAttribute('data-precio')) || 0;
+      const diferencia = cantidadOriginal - cantidadActual;
+      totalVenta += cantidadActual * precio;
+      if (diferencia > 0) {
+        totalReembolso += diferencia * precio;
+        hayReembolso = true;
+      }
+    });
+    
+    document.getElementById('total-venta').textContent = `$${totalVenta.toLocaleString('es-CL', {maximumFractionDigits: 0})}`;
+    document.getElementById('total-reembolso').textContent = `$${totalReembolso.toLocaleString('es-CL', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    
+    // Mostrar/ocultar fila de reembolso
+    const filaReembolso = document.getElementById('fila-reembolso');
+    if (hayReembolso) {
+      filaReembolso.classList.remove('d-none');
+    } else {
+      filaReembolso.classList.add('d-none');
+    }
+  }
+  
+  // Event listeners para inputs de cantidad
+  document.querySelectorAll('input[name*="cantidad"]').forEach(input => {
+    input.setAttribute('data-cantidad-original', input.value);
+    input.addEventListener('change', function() {
+      actualizarReembolso(this);
+    });
+    input.addEventListener('input', function() {
+      actualizarReembolso(this);
+    });
+  });
+  
+  // Inicializar totales
+  actualizarTotales();
+  
+  // Función para actualizar el estado de los detalles de venta desde el servidor
+  function actualizarEstadoDetallesVenta() {
+    const ventaId = '{{ venta.id_venta }}';
+    console.log('Actualizando estado de venta:', ventaId);
+    
+    // Evitar múltiples actualizaciones simultáneas
+    if (window.actualizandoEstado) {
+      return;
+    }
+    
+    window.actualizandoEstado = true;
+    
+    fetch(`/ventas/estado/${ventaId}/`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          console.log('Estado actualizado correctamente');
+          
+          // Actualizar el total de la venta
+          const totalElement = document.getElementById('total-venta');
+          if (totalElement) {
+            totalElement.textContent = `$${data.total_venta.toLocaleString('es-CL', {maximumFractionDigits: 0})}`;
+          }
+          
+          // Actualizar cada detalle
+          data.detalles.forEach(detalle => {
+            // Buscar la fila por el input que contiene el nombre del detalle
+            const input = document.querySelector(`input[name="cantidad_${detalle.id_detalle}"]`);
+            if (input) {
+              const row = input.closest('tr');
+              if (row) {
+                // Buscar el badge de estado en esta fila
+                const badge = row.querySelector('.badge');
+                if (badge) {
+                  let nuevaClase = '';
+                  let nuevoTexto = '';
+                  switch (detalle.estado) {
+                    case 'ACTIVO':
+                      nuevaClase = 'bg-success';
+                      nuevoTexto = 'ACTIVO';
+                      break;
+                    case 'PARCIALMENTE_REEMBOLSADO':
+                      nuevaClase = 'bg-warning';
+                      nuevoTexto = 'PARCIALMENTE REEMBOLSADO';
+                      break;
+                    case 'REEMBOLSADO':
+                      nuevaClase = 'bg-danger';
+                      nuevoTexto = 'REEMBOLSADO';
+                      break;
+                    default:
+                      nuevaClase = 'bg-success';
+                      nuevoTexto = 'ACTIVO';
+                  }
+                  
+                  badge.textContent = nuevoTexto;
+                  badge.className = `badge ${nuevaClase}`;
+                }
+                
+                // Actualizar la cantidad si cambió
+                const cantidadActual = parseInt(input.value) || 0;
+                if (cantidadActual !== detalle.cantidad) {
+                  input.value = detalle.cantidad;
+                  input.setAttribute('data-cantidad-original', detalle.cantidad);
+                  
+                  // Actualizar el subtotal de la fila
+                  const precio = parseFloat(row.querySelector('.precio-unitario').getAttribute('data-precio')) || 0;
+                  const subtotal = detalle.cantidad * precio;
+                  const subtotalElement = row.querySelector('.subtotal');
+                  if (subtotalElement) {
+                    subtotalElement.textContent = `$${subtotal.toLocaleString('es-CL', {maximumFractionDigits: 0})}`;
+                  }
+                  
+                  // Actualizar los indicadores de reembolso
+                  actualizarReembolso(input);
+                }
+              }
+            }
+          });
+          
+          // Actualizar totales después de los cambios
+          actualizarTotales();
+          
+        } else {
+          console.error('Error al actualizar estado:', data.message);
+          mostrarMensaje('Error al actualizar estado', 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Error en la petición:', error);
+        mostrarMensaje('Error al actualizar estado', 'error');
+      })
+      .finally(() => {
+        // Permitir nuevas actualizaciones después de un breve delay
+        setTimeout(() => {
+          window.actualizandoEstado = false;
+        }, 1000);
+      });
+  }
+  
+  // Función para mostrar mensajes
+  function mostrarMensaje(mensaje, tipo) {
+    // Solo mostrar mensajes de error, los de éxito serán muy sutiles
+    if (tipo === 'success') {
+      // Mostrar un indicador sutil en lugar de un alert completo
+      const ventaId = '{{ venta.id_venta }}';
+      const indicator = document.createElement('div');
+      indicator.id = 'estado-indicator';
+      indicator.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #28a745;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 9999;
+        opacity: 0;
+        transform: translateX(100px);
+        transition: all 0.3s ease;
+      `;
+      indicator.innerHTML = `<i class="bi bi-check-circle me-1"></i>${mensaje}`;
+      
+      document.body.appendChild(indicator);
+      
+      // Animar entrada
+      setTimeout(() => {
+        indicator.style.opacity = '1';
+        indicator.style.transform = 'translateX(0)';
+      }, 10);
+      
+      // Auto-remover después de 2 segundos
+      setTimeout(() => {
+        indicator.style.opacity = '0';
+        indicator.style.transform = 'translateX(100px)';
+        setTimeout(() => {
+          if (indicator.parentElement) {
+            indicator.remove();
+          }
+        }, 300);
+      }, 2000);
+      
+      return;
+    }
+    
+    // Para errores, mostrar alert normal
+    const alertClass = 'alert-danger';
+    const alertHTML = `
+      <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        ${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    `;
+    
+    // Insertar al inicio del contenedor principal
+    const container = document.querySelector('.container');
+    container.insertAdjacentHTML('afterbegin', alertHTML);
+    
+    // Auto-remover después de 5 segundos
+    setTimeout(() => {
+      const alert = container.querySelector('.alert');
+      if (alert) {
+        alert.remove();
+      }
+    }, 5000);
+  }
+  
+  // Usar BroadcastChannel para comunicación entre pestañas
+  let reembolsoChannel;
+  try {
+    reembolsoChannel = new BroadcastChannel('reembolso_updates');
+    reembolsoChannel.onmessage = function(event) {
+      const ventaId = '{{ venta.id_venta }}';
+      if (event.data.venta_id == ventaId) {
+        console.log('BroadcastChannel: Actualización de reembolso detectada');
+        actualizarEstadoDetallesVenta();
+      }
+    };
+  } catch (e) {
+    console.log('BroadcastChannel no disponible, usando eventos alternativos');
+  }
+  
+  // Escuchar eventos globales de reembolsos (respaldo)
+  window.addEventListener('reembolsoCanceladoGlobal', function(event) {
+    const ventaId = '{{ venta.id_venta }}';
+    if (event.detail.venta_id == ventaId) {
+      console.log('Evento global de cancelación detectado para esta venta');
+      actualizarEstadoDetallesVenta();
+    }
+  });
+  
+  window.addEventListener('reembolsoRestauradoGlobal', function(event) {
+    const ventaId = '{{ venta.id_venta }}';
+    if (event.detail.venta_id == ventaId) {
+      console.log('Evento global de restauración detectado para esta venta');
+      actualizarEstadoDetallesVenta();
+    }
+  });
+  
+  // Escuchar eventos postMessage de otras pestañas (respaldo)
+  window.addEventListener('message', function(event) {
+    const ventaId = '{{ venta.id_venta }}';
+    if (event.data.type === 'reembolso_cancelado' || event.data.type === 'reembolso_restaurado') {
+      console.log('Mensaje de otra pestaña detectado');
+      actualizarEstadoDetallesVenta();
+    }
+  });
+  
+  // Verificar cambios cuando la página vuelve a tener foco (solo como respaldo)
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      const ventaId = '{{ venta.id_venta }}';
+      const reembolsoCancelado = localStorage.getItem(`reembolso_cancelado_${ventaId}`);
+      const reembolsoRestaurado = localStorage.getItem(`reembolso_restaurado_${ventaId}`);
+      
+      if (reembolsoCancelado || reembolsoRestaurado) {
+        console.log('Detectado cambio al volver a la página');
+        localStorage.removeItem(`reembolso_cancelado_${ventaId}`);
+        localStorage.removeItem(`reembolso_restaurado_${ventaId}`);
+        actualizarEstadoDetallesVenta();
+      }
+    }
+  });
+});
+</script>
+{% endblock %} 

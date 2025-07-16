@@ -1,0 +1,204 @@
+{% extends 'home/base_main.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Editar Compra{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.card-header.bg-gradient {
+  background: #fff !important;
+  color: #222 !important;
+  font-weight: 600;
+  font-size: 1.08rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+  border-bottom: 1.5px solid #e5e7eb;
+  letter-spacing: 0.01em;
+  box-shadow: none;
+}
+
+/* Forzar estilos de base_main para las tablas */
+.table {
+  background: #23272b !important;
+  color: #f3f4f6 !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 12px -6px rgba(30, 33, 37, 0.13) !important;
+  border-collapse: collapse !important;
+  font-size: 0.95rem !important;
+  margin-bottom: 0 !important;
+}
+
+.table th, .table td {
+  border: 1px solid #3a3d43 !important;
+  padding: 0.38rem 0.8rem !important;
+  vertical-align: middle !important;
+}
+
+.table thead th {
+  background: linear-gradient(90deg, #31343b 0%, #2d3137 100%) !important;
+  color: #e5e7eb !important;
+  font-weight: 700 !important;
+  font-size: 1.01rem !important;
+  letter-spacing: 0.01em !important;
+  box-shadow: 0 2px 8px -4px rgba(30,33,37,0.10) !important;
+}
+
+.table thead th:first-child { border-top-left-radius: 12px !important; }
+.table thead th:last-child { border-top-right-radius: 12px !important; }
+
+.table tbody tr:hover {
+  background: #282c31 !important;
+  box-shadow: 0 2px 8px -6px #0002 !important;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) {
+  background-color: #24272c !important;
+}
+
+.table-striped > tbody > tr:nth-of-type(even) {
+  background-color: #23272b !important;
+}
+
+.table tbody tr:last-child td:first-child { border-bottom-left-radius: 12px !important; }
+.table tbody tr:last-child td:last-child { border-bottom-right-radius: 12px !important; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Función para actualizar subtotales y total
+    function actualizarSubtotales() {
+        let totalCompra = 0;
+        
+        document.querySelectorAll('.producto-row').forEach(function(row) {
+            const cantidadInput = row.querySelector('input[type="number"]');
+            const precioElement = row.querySelector('.precio-unitario');
+            const subtotalElement = row.querySelector('.subtotal');
+            
+            if (cantidadInput && precioElement && subtotalElement) {
+                const cantidad = parseInt(cantidadInput.value) || 0;
+                const precio = parseFloat(precioElement.getAttribute('data-precio')) || 0;
+                const subtotal = cantidad * precio;
+                
+                // Actualizar subtotal en la tabla
+                subtotalElement.textContent = '$' + subtotal.toLocaleString('es-CL');
+                
+                // Sumar al total
+                totalCompra += subtotal;
+            }
+        });
+        
+        // Actualizar total de la compra
+        const totalElement = document.getElementById('total-compra');
+        if (totalElement) {
+            totalElement.textContent = '$' + totalCompra.toLocaleString('es-CL');
+        }
+    }
+    
+    // Event listeners para inputs de cantidad
+    document.querySelectorAll('input[type="number"]').forEach(function(input) {
+        input.addEventListener('input', actualizarSubtotales);
+        input.addEventListener('change', actualizarSubtotales);
+    });
+    
+    // Inicializar subtotales al cargar la página
+    actualizarSubtotales();
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <!-- Header con título y botones -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="fw-bold mb-0 mt-6 mb-2">Editar Compra #{{ compra.id_compra }}</h1>
+    <div class="btn-group">
+      <a href="{% url 'compras' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Volver a compras
+      </a>
+    </div>
+  </div>
+  
+  <div class="card shadow-lg rounded-4">
+    <div class="card-header bg-gradient fw-bold">
+      <i class="bi bi-pencil-square me-2"></i>Editar Compra
+    </div>
+    <div class="card-body p-4">
+      <form method="post">
+        {% csrf_token %}
+        <h4 class="fw-bold mb-3 text-primary"><i class="bi bi-box-seam me-2"></i>Productos comprados</h4>
+        <div class="table-responsive mb-3">
+          <table class="table table-bordered align-middle text-center mb-0 table-striped" id="tabla-productos-edit">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Proveedor</th>
+                <th>Cantidad original</th>
+                <th>Cantidad a mantener</th>
+                <th>Precio de compra</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for detalle_info in detalles %}
+              <tr class="producto-row" data-producto-id="{{ detalle_info.producto.id_producto }}">
+                <td>
+                  <span class="fw-semibold">
+                    {% if detalle_info.producto.nombre and detalle_info.producto.nombre != '---' and detalle_info.producto.nombre != '—' and detalle_info.producto.nombre != '' %}
+                      {{ detalle_info.producto.nombre }}
+                    {% else %}
+                      <span class="text-muted fst-italic">Sin nombre</span>
+                    {% endif %}
+                  </span>
+                </td>
+                <td>
+                  {% if detalle_info.proveedor and detalle_info.proveedor.nombre %}
+                    {{ detalle_info.proveedor.nombre }}
+                  {% else %}
+                    <span class="text-muted fst-italic">Sin proveedor</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  <span class="badge bg-secondary">{{ detalle_info.cantidad }} unid.</span>
+                </td>
+                <td>
+                  <div class="input-group input-group-sm">
+                    <input type="number" 
+                           name="cantidad_{{ detalle_info.detalle.id_detalle }}" 
+                           value="{{ detalle_info.cantidad }}" 
+                           min="0" 
+                           max="{{ detalle_info.cantidad }}"
+                           class="form-control form-control-sm text-center" 
+                           data-cantidad-original="{{ detalle_info.cantidad }}" 
+                           required />
+                    <span class="input-group-text">unid.</span>
+                  </div>
+                </td>
+                <td class="precio-unitario" data-precio="{{ detalle_info.precio_compra }}">${{ detalle_info.precio_compra|floatformat:0|intcomma }}</td>
+                <td class="subtotal">${{ detalle_info.subtotal|floatformat:0|intcomma }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="5" class="text-end">Total compra:</th>
+                <th id="total-compra">${{ compra.total_compra|floatformat:0|intcomma }}</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="row g-3 align-items-end mb-0">
+          <div class="col-md-10">
+            <label for="observaciones" class="form-label fw-semibold">Observaciones:</label>
+            <textarea name="observaciones" id="observaciones" class="form-control" rows="2">{% if compra.observaciones and compra.observaciones != '---' and compra.observaciones != '—' and compra.observaciones != '' %}{{ compra.observaciones }}{% endif %}</textarea>
+          </div>
+          <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-warning fw-bold"><i class="bi bi-save me-2"></i>Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %} 

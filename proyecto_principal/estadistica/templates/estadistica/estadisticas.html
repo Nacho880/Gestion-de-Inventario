@@ -1,0 +1,979 @@
+{% extends 'home/base_main.html' %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Estadística - Inventario{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+/* Tarjetas de estadísticas: fondo oscuro y letras blancas en modo dark */
+[data-theme="dark"] .card.border-success,
+[data-theme="dark"] .card.border-danger,
+[data-theme="dark"] .card.border-primary,
+[data-theme="dark"] .card.border-info {
+  background: #181c24 !important;
+  color: #fff !important;
+  border-color: inherit !important;
+}
+[data-theme="dark"] .card.border-success {
+  border-color: #198754 !important;
+}
+[data-theme="dark"] .card.border-danger {
+  border-color: #dc3545 !important;
+}
+[data-theme="dark"] .card.border-primary {
+  border-color: #0d6efd !important;
+}
+[data-theme="dark"] .card.border-info {
+  border-color: #0dcaf0 !important;
+}
+[data-theme="dark"] .card.border-success .card-title,
+[data-theme="dark"] .card.border-success i {
+  color: #198754 !important;
+  filter: none !important;
+}
+[data-theme="dark"] .card.border-danger .card-title,
+[data-theme="dark"] .card.border-danger i {
+  color: #dc3545 !important;
+  filter: none !important;
+}
+[data-theme="dark"] .card.border-primary .card-title,
+[data-theme="dark"] .card.border-primary i {
+  color: #0d6efd !important;
+  filter: none !important;
+}
+[data-theme="dark"] .card.border-info .card-title,
+[data-theme="dark"] .card.border-info i {
+  color: #0dcaf0 !important;
+  filter: none !important;
+}
+[data-theme="dark"] .grafico-contenedor {
+  background: #181c24 !important;
+  color: #fff !important;
+  border-color: #222 !important;
+}
+[data-theme="dark"] .grafico-titulo {
+  color: #60a5fa !important;
+}
+[data-theme="dark"] .chartjs-render-monitor {
+  background: #181c24 !important;
+}
+[data-theme="dark"] .card .text-muted {
+  color: #ccc !important;
+}
+
+/* Estilos para filtros de estadísticas en modo claro */
+.form-control.rounded-pill.border-primary {
+  background: #ffffff !important;
+  color: #374151 !important;
+  border: 2px solid #0d6efd !important;
+  border-radius: 50px !important;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.875rem !important;
+  transition: all 0.15s ease !important;
+}
+
+.form-control.rounded-pill.border-primary:focus {
+  background: #ffffff !important;
+  color: #374151 !important;
+  border-color: #0d6efd !important;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+  outline: none !important;
+}
+
+.form-control.rounded-pill.border-primary::placeholder {
+  color: #6c757d !important;
+  opacity: 1 !important;
+}
+
+/* Estilos para filtros de estadísticas en modo oscuro */
+[data-theme="dark"] .form-control.rounded-pill.border-primary {
+  background: #23272b !important;
+  color: #fff !important;
+  border: 2px solid #0d6efd !important;
+  border-radius: 50px !important;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.875rem !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="dark"] .form-control.rounded-pill.border-primary:focus {
+  background: #23272b !important;
+  color: #fff !important;
+  border-color: #0d6efd !important;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+  outline: none !important;
+}
+
+[data-theme="dark"] .form-control.rounded-pill.border-primary::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+/* Estilos para botones de período - mantener diseño original en modo claro */
+.btn-group .btn {
+  /* Mantener diseño original de Bootstrap */
+  border-radius: 0.375rem !important;
+  font-size: 0.875rem !important;
+  padding: 0.375rem 0.75rem !important;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+/* Estilos para botones de período en modo oscuro - solo cambiar colores */
+[data-theme="dark"] .btn-group .btn {
+  /* Mantener la misma forma y tamaño que en modo claro */
+  border-radius: 0.375rem !important;
+  font-size: 0.875rem !important;
+  padding: 0.375rem 0.75rem !important;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+/* Estilos para botón "Actualizar" - mantener diseño original */
+.btn.btn-primary.rounded-pill {
+  /* Mantener diseño original de Bootstrap */
+  border-radius: 50rem !important;
+  font-size: 1rem !important;
+  padding: 0.5rem 1rem !important;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+/* Estilos para botón "Actualizar" en modo oscuro - solo cambiar colores */
+[data-theme="dark"] .btn.btn-primary.rounded-pill {
+  /* Mantener la misma forma y tamaño que en modo claro */
+  border-radius: 50rem !important;
+  font-size: 1rem !important;
+  padding: 0.5rem 1rem !important;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+.action-bar .form-control[type="text"]::placeholder,
+.action-bar input.form-control[type="search"]::placeholder {
+  color: #666 !important;
+  opacity: 1 !important;
+}
+[data-theme="dark"] .action-bar .form-control[type="text"]::placeholder,
+[data-theme="dark"] .action-bar input.form-control[type="search"]::placeholder {
+  color: #666 !important;
+  opacity: 1 !important;
+}
+
+/* Mejoras específicas para gráficos en móviles */
+@media (max-width: 576px) {
+  /* Contenedores de gráficos responsivos */
+  .grafico-contenedor {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 250px !important;
+    max-height: 350px !important;
+    margin: 0 auto !important;
+    padding: 0.5rem !important;
+    border-radius: 8px !important;
+  }
+  
+  /* Canvas de gráficos */
+  canvas {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 250px !important;
+    max-height: 350px !important;
+    display: block !important;
+  }
+  
+  /* Títulos de gráficos */
+  .grafico-titulo {
+    font-size: 1rem !important;
+    text-align: center !important;
+    margin-bottom: 0.5rem !important;
+    font-weight: 600 !important;
+  }
+  
+  /* Cards de estadísticas más compactas */
+  .card {
+    margin-bottom: 0.75rem !important;
+  }
+  
+  .card-body {
+    padding: 0.75rem !important;
+  }
+  
+  .card-title {
+    font-size: 0.9rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  /* Filtros más compactos */
+  .row.g-3 {
+    margin: 0 -0.25rem !important;
+  }
+  
+  .col-auto {
+    padding: 0 0.25rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .form-control {
+    font-size: 0.85rem !important;
+    padding: 0.4rem 0.6rem !important;
+    border-radius: 6px !important;
+  }
+  
+  .form-label {
+    font-size: 0.8rem !important;
+    margin-bottom: 0.3rem !important;
+  }
+  
+  /* Botones de período más compactos */
+  .btn-group {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 0.25rem !important;
+  }
+  
+  .btn-group .btn {
+    font-size: 0.75rem !important;
+    padding: 0.3rem 0.5rem !important;
+    margin: 0.1rem !important;
+    border-radius: 5px !important;
+  }
+  
+  /* Resumen de período más compacto */
+  .alert-info {
+    padding: 0.75rem !important;
+    font-size: 0.85rem !important;
+    border-radius: 8px !important;
+  }
+  
+  .alert-info h5 {
+    font-size: 1rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .alert-info ul {
+    margin-bottom: 0 !important;
+    padding-left: 1rem !important;
+  }
+  
+  .alert-info li {
+    margin-bottom: 0.25rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  /* Contenedor principal más compacto */
+  .container {
+    padding: 0.5rem !important;
+  }
+  
+  /* Títulos principales */
+  h1 {
+    font-size: 1.3rem !important;
+    margin-bottom: 1rem !important;
+    text-align: center !important;
+  }
+  
+  /* Iconos más pequeños */
+  .bi {
+    font-size: 1.5rem !important;
+  }
+  
+  /* Texto de productos más compacto */
+  .fs-4 {
+    font-size: 1rem !important;
+  }
+  
+  .text-muted {
+    font-size: 0.8rem !important;
+  }
+}
+
+/* Mejoras para pantallas muy pequeñas */
+@media (max-width: 480px) {
+  .grafico-contenedor {
+    min-height: 200px !important;
+    max-height: 300px !important;
+    padding: 0.4rem !important;
+  }
+  
+  canvas {
+    min-height: 200px !important;
+    max-height: 300px !important;
+  }
+  
+  .grafico-titulo {
+    font-size: 0.9rem !important;
+  }
+  
+  .card-body {
+    padding: 0.6rem !important;
+  }
+  
+  .card-title {
+    font-size: 0.85rem !important;
+  }
+  
+  .form-control {
+    font-size: 0.8rem !important;
+    padding: 0.35rem 0.5rem !important;
+  }
+  
+  .form-label {
+    font-size: 0.75rem !important;
+  }
+  
+  .btn-group .btn {
+    font-size: 0.7rem !important;
+    padding: 0.25rem 0.4rem !important;
+  }
+  
+  .alert-info {
+    padding: 0.6rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  .alert-info h5 {
+    font-size: 0.9rem !important;
+  }
+  
+  .alert-info li {
+    font-size: 0.75rem !important;
+  }
+  
+  h1 {
+    font-size: 1.2rem !important;
+  }
+  
+  .fs-4 {
+    font-size: 0.9rem !important;
+  }
+  
+  .text-muted {
+    font-size: 0.75rem !important;
+  }
+  
+  .bi {
+    font-size: 1.3rem !important;
+  }
+}
+
+/* Mejoras para orientación landscape */
+@media (max-width: 768px) and (orientation: landscape) {
+  .grafico-contenedor {
+    min-height: 200px !important;
+    max-height: 250px !important;
+  }
+  
+  canvas {
+    min-height: 200px !important;
+    max-height: 250px !important;
+  }
+  
+  .container {
+    padding: 0.3rem !important;
+  }
+  
+  .card {
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .card-body {
+    padding: 0.5rem !important;
+  }
+}
+
+.card-title.text-nowrap {
+  white-space: nowrap !important;
+  font-size: 1.1rem;
+}
+@media (max-width: 600px) {
+  .card-title.text-nowrap {
+    font-size: 0.95rem;
+  }
+}
+
+/* Botones de grupo sin huecos en las uniones */
+.btn-group .btn {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  border-radius: 0 !important;
+}
+
+.btn-group .btn:first-child {
+  border-top-left-radius: 0.375rem !important;
+  border-bottom-left-radius: 0.375rem !important;
+}
+
+.btn-group .btn:last-child {
+  border-top-right-radius: 0.375rem !important;
+  border-bottom-right-radius: 0.375rem !important;
+}
+
+/* Agrupar todo el CSS de modo oscuro en un solo bloque */
+[data-theme="dark"] {
+  /* Botones de grupo sin huecos en las uniones en modo oscuro */
+  .btn-group .btn {
+    background: #23272b !important;
+    border-color: #23272b !important;
+    color: #fff !important;
+  }
+  .btn-group .btn.active,
+  .btn-group .btn:active,
+  .btn-group .btn:focus,
+  .btn-group .btn:hover {
+    background: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+    color: #fff !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .grafico-contenedor {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    border-radius: 10px !important;
+    padding: 0.5rem 0.2rem 1rem 0.2rem !important;
+    box-sizing: border-box !important;
+  }
+  .grafico-contenedor .d-flex {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.5rem !important;
+  }
+  .grafico-titulo {
+    font-size: 1.1rem !important;
+    margin-bottom: 0.5rem !important;
+    text-align: center !important;
+  }
+  .grafico-contenedor label,
+  .grafico-contenedor select {
+    font-size: 0.95rem !important;
+    width: 100% !important;
+    margin-bottom: 0.3rem !important;
+  }
+  .grafico-contenedor select {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    display: block !important;
+  }
+  .grafico-contenedor .d-flex.gap-2 {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.2rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+  .grafico-contenedor canvas {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 250px !important;
+    min-height: 180px !important;
+    max-height: 300px !important;
+    display: block !important;
+    margin: 0 auto !important;
+    border-radius: 8px !important;
+    background: #fff !important;
+  }
+  .container {
+    padding: 0.2rem !important;
+  }
+  .row.g-3, .row.justify-content-center {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    margin: 0 !important;
+  }
+  .col-auto, .col-12, .col-sm-6, .col-lg-3 {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding: 0 !important;
+    margin-bottom: 0.5rem !important;
+  }
+  .btn-group {
+    flex-wrap: wrap !important;
+    justify-content: stretch !important;
+    width: 100% !important;
+    gap: 0.2rem !important;
+  }
+  .btn-group .btn {
+    width: 100% !important;
+    margin-bottom: 0.2rem !important;
+    font-size: 0.9rem !important;
+  }
+  .alert-info, .alert-warning {
+    font-size: 0.9rem !important;
+    padding: 0.7rem !important;
+  }
+  h1 {
+    font-size: 1.1rem !important;
+    margin-bottom: 0.7rem !important;
+    text-align: center !important;
+  }
+  .card {
+    margin-bottom: 0.7rem !important;
+    border-radius: 10px !important;
+  }
+  .card-body {
+    padding: 0.7rem !important;
+  }
+  .card-title {
+    font-size: 1rem !important;
+    margin-bottom: 0.4rem !important;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <h1 class="fw-bold mb-0 mt-6 mb-4">Estadística de Ventas y Compras</h1>
+
+  <!-- Destacado: Productos más y menos vendidos, y productos más y menos comprados -->
+  <div class="row mb-4 justify-content-center">
+    <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
+      <div class="card shadow-sm border-success border-2 h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title text-success fw-bold mb-2">Producto más vendido</h5>
+          <div class="d-flex align-items-center mb-2" style="min-height:3em; gap:0.25em;">
+            <div class="flex-shrink-0 ms-3" style="margin-right:0;">
+              <i class="bi bi-trophy-fill" style="font-size:2.5em; color:#198754; margin:0;"></i>
+            </div>
+            <div class="flex-grow-1 text-center w-100">
+              {% if producto_mas_vendido %}
+                <div class="fs-4 fw-bold">{{ producto_mas_vendido.producto__nombre }}</div>
+                <div class="text-muted">Cantidad vendida: <span class="fw-semibold">{{ producto_mas_vendido.total_vendido|default:"0"|intcomma }}</span></div>
+              {% else %}
+                <div class="text-muted">No hay ventas en este período</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
+      <div class="card shadow-sm border-danger border-2 h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title text-danger fw-bold mb-2">Producto menos vendido</h5>
+          <div class="d-flex align-items-center mb-2" style="min-height:3em; gap:0.25em;">
+            <div class="flex-shrink-0 ms-3" style="margin-right:0;">
+              <i class="bi bi-graph-down" style="font-size:2.5em; color:#dc3545; margin:0;"></i>
+            </div>
+            <div class="flex-grow-1 text-center w-100">
+              {% if producto_menos_vendido %}
+                <div class="fs-4 fw-bold">{{ producto_menos_vendido.producto__nombre }}</div>
+                <div class="text-muted">Cantidad vendida: <span class="fw-semibold">{{ producto_menos_vendido.total_vendido|default:"0"|intcomma }}</span></div>
+              {% else %}
+                <div class="text-muted">No hay ventas en este período</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
+      <div class="card shadow-sm border-primary border-2 h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title text-primary fw-bold mb-2">Producto más comprado</h5>
+          <div class="d-flex align-items-center mb-2" style="min-height:3em; gap:0.25em;">
+            <div class="flex-shrink-0 ms-3" style="margin-right:0;">
+              <i class="bi bi-cart-plus-fill" style="font-size:2.5em; color:#0d6efd; margin:0;"></i>
+            </div>
+            <div class="flex-grow-1 text-center w-100">
+              {% if producto_mas_comprado %}
+                <div class="fs-4 fw-bold">{{ producto_mas_comprado.producto__nombre }}</div>
+                <div class="text-muted">Cantidad comprada: <span class="fw-semibold">{{ producto_mas_comprado.total_comprado|default:"0"|intcomma }}</span></div>
+              {% else %}
+                <div class="text-muted">No hay compras en este período</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-3">
+      <div class="card shadow-sm border-info border-2 h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title text-info fw-bold mb-2 text-nowrap">Producto menos comprado</h5>
+          <div class="d-flex align-items-center mb-2" style="min-height:3em; gap:0.25em;">
+            <div class="flex-shrink-0 ms-3" style="margin-right:0;">
+              <i class="bi bi-cart-dash" style="font-size:2.5em; color:#0dcaf0; margin:0;"></i>
+            </div>
+            <div class="flex-grow-1 text-center w-100">
+              {% if producto_menos_comprado %}
+                <div class="fs-4 fw-bold">{{ producto_menos_comprado.producto__nombre }}</div>
+                <div class="text-muted">Cantidad comprada: <span class="fw-semibold">{{ producto_menos_comprado.total_comprado|default:"0"|intcomma }}</span></div>
+              {% else %}
+                <div class="text-muted">No hay compras en este período</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros generales -->
+  <form method="get" class="row g-3 justify-content-center align-items-end mb-3" id="formFiltrosFechas">
+    <div class="col-auto">
+      <label for="top" class="form-label fw-semibold">Mostrar top:</label>
+      <input type="number" id="top" name="top" value="{{ top|default:'10' }}" min="1" max="1000" class="form-control rounded-pill border-primary" style="width: 120px;" />
+    </div>
+    <div class="col-auto">
+      <label for="fecha_inicio" class="form-label fw-semibold">Fecha inicio:</label>
+      <input type="date" id="fecha_inicio" name="fecha_inicio" value="{{ fecha_inicio|default:'' }}" class="form-control rounded-pill border-primary" style="width: 180px;" />
+    </div>
+    <div class="col-auto">
+      <label for="fecha_fin" class="form-label fw-semibold">Fecha fin:</label>
+      <input type="date" id="fecha_fin" name="fecha_fin" value="{{ fecha_fin|default:'' }}" class="form-control rounded-pill border-primary" style="width: 180px;" />
+    </div>
+    <div class="col-auto d-grid">
+      <button type="submit" class="btn btn-primary rounded-pill px-5 fw-semibold">Actualizar</button>
+    </div>
+  </form>
+
+  <!-- Botones rápidos para períodos comunes -->
+  <div class="row justify-content-center mb-3">
+    <div class="col-auto">
+      <div class="btn-group" role="group">
+        <button type="button" class="btn {% if periodo_actual == 'hoy' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" onclick="setPeriodo('hoy')">Hoy</button>
+        <button type="button" class="btn {% if periodo_actual == 'ayer' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" onclick="setPeriodo('ayer')">Ayer</button>
+        <button type="button" class="btn {% if periodo_actual == 'semana' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" onclick="setPeriodo('semana')">Esta semana</button>
+        <button type="button" class="btn {% if periodo_actual == 'mes' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" onclick="setPeriodo('mes')">Este mes</button>
+        <button type="button" class="btn {% if periodo_actual == 'mes_anterior' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" onclick="setPeriodo('mes_anterior')">Mes anterior</button>
+        <button type="button" class="btn {% if periodo_actual == 'año' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" onclick="setPeriodo('año')">Este año</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="limpiarFiltros()">Limpiar filtros</button>
+      </div>
+    </div>
+  </div>
+
+  {% if advertencia_fecha %}
+  <div class="alert alert-warning text-center">La fecha de inicio era mayor que la fecha final. Se han invertido para mostrar resultados.</div>
+  {% endif %}
+
+  {% if request.GET.debug %}
+  <div class="alert alert-info text-center">
+    <strong>Debug:</strong> Período detectado: <span class="badge bg-primary">{{ debug_periodo }}</span> | 
+    Fecha inicio: {{ fecha_inicio|default:"No definida" }} | 
+    Fecha fin: {{ fecha_fin|default:"No definida" }}
+  </div>
+  {% endif %}
+
+  <!-- Análisis general del período seleccionado -->
+  <div class="alert alert-info" id="resumenPeriodo">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="fw-bold mb-0">
+        {% if fecha_inicio and fecha_fin %}
+          Resumen del período ({{ fecha_inicio }} / {{ fecha_fin }}):
+        {% elif fecha_inicio %}
+          Resumen desde {{ fecha_inicio }}:
+        {% elif fecha_fin %}
+          Resumen hasta {{ fecha_fin }}:
+        {% else %}
+          Resumen general (sin filtros de fecha):
+        {% endif %}
+      </h5>
+      <small class="text-muted">Datos del período seleccionado</small>
+    </div>
+    <ul class="mb-0">
+      <li>Total vendido: <strong>{{ totales_ventas.total_cant|default:"0"|intcomma }}</strong> unidades por <strong>${{ totales_ventas.total_monto|default:"0"|floatformat:0|intcomma }}</strong>.</li>
+      <li>Total comprado: <strong>{{ totales_compras.total_cant|default:"0"|intcomma }}</strong> unidades por <strong>${{ totales_compras.total_monto|default:"0"|floatformat:0|intcomma }}</strong>.</li>
+      <li>Producto más vendido: <strong>{% if producto_mas_vendido %}{{ producto_mas_vendido.producto__nombre }}{% else %}No hay ventas en este período{% endif %}</strong>{% if producto_mas_vendido %} ({{ producto_mas_vendido.total_vendido|default:"0"|intcomma }} unidades){% endif %}.</li>
+      <li>Producto más comprado: <strong>{% if producto_mas_comprado %}{{ producto_mas_comprado.producto__nombre }}{% else %}No hay compras en este período{% endif %}</strong>{% if producto_mas_comprado %} ({{ producto_mas_comprado.total_comprado|default:"0"|intcomma }} unidades){% endif %}.</li>
+    </ul>
+  </div>
+
+  <style>
+  .grafico-contenedor {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 24px 0 rgba(0, 123, 255, 0.10), 0 1.5px 6px 0 rgba(0,0,0,0.05);
+    padding: 2.5rem 2rem 2rem 2rem;
+    margin-bottom: 2.5rem;
+    border: 2px solid #e3eafc;
+    width: 100%;
+  }
+  .grafico-titulo {
+    text-align: center;
+    font-size: 2.2rem;
+    font-weight: bold;
+    color: #1976d2;
+    margin-bottom: 1.5rem;
+    letter-spacing: 1px;
+  }
+  .grafico-contenedor canvas {
+    width: 100% !important;
+    max-width: 100%;
+    height: 400px !important;
+    min-height: 300px;
+    display: block;
+    margin: 0 auto;
+  }
+</style>
+
+<div class="grafico-contenedor">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="grafico-titulo" id="graficoTitulo">Ventas</div>
+    <div class="d-flex gap-2 align-items-center">
+      <label for="tipoDatoGrafico" class="fw-semibold me-2">Mostrar:</label>
+      <select id="tipoDatoGrafico" class="form-select d-inline-block w-auto rounded-pill">
+        <option value="ventas" selected>Ventas</option>
+        <option value="compras">Compras</option>
+      </select>
+      <label for="tipoGrafico" class="fw-semibold ms-3 me-2">Tipo de gráfico:</label>
+      <select id="tipoGrafico" class="form-select d-inline-block w-auto rounded-pill">
+        <option value="bar" selected>Barras</option>
+        <option value="pie">Circular</option>
+      </select>
+    </div>
+  </div>
+  <div id="mensajeSinDatos" style="display:none; text-align:center; color:#888; font-size:1.2em; padding:2em 0;">No hay datos suficientes para mostrar el gráfico.</div>
+  <canvas id="graficoUnificado"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script>
+// Variables de datos para los gráficos
+const ventasLabels = [{% for item in productos_vendidos|slice:":10" %}"{{ item.producto__nombre|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
+const ventasData = [{% for item in productos_vendidos|slice:":10" %}{{ item.total_vendido|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+const ventasMontos = [{% for item in productos_vendidos|slice:":10" %}{{ item.monto_generado|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+const comprasLabels = [{% for item in productos_comprados|slice:":10" %}"{{ item.producto__nombre|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
+const comprasData = [{% for item in productos_comprados|slice:":10" %}{{ item.total_comprado|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+const comprasMontos = [{% for item in productos_comprados|slice:":10" %}{{ item.monto_gastado|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+function renderGrafico(tipoDato = 'ventas', tipoGrafico = 'bar') {
+  if (window.chartUnificado) window.chartUnificado.destroy();
+  let labels, data, montos, titulo;
+  let backgroundColor, borderColor, datalabelsColor, ejeColor, tituloColor;
+
+  // Paletas de colores
+  const coloresVentas = [
+    'rgba(33, 150, 243, 0.7)',   // Azul
+    'rgba(255, 193, 7, 0.7)',    // Amarillo
+    'rgba(76, 175, 80, 0.7)',    // Verde
+    'rgba(244, 67, 54, 0.7)',    // Rojo
+    'rgba(156, 39, 176, 0.7)',   // Morado
+    'rgba(255, 87, 34, 0.7)',    // Naranja
+    'rgba(0, 188, 212, 0.7)',    // Turquesa
+    'rgba(233, 30, 99, 0.7)',    // Rosa
+    'rgba(205, 220, 57, 0.7)',   // Lima
+    'rgba(121, 85, 72, 0.7)'     // Café
+  ];
+  const coloresCompras = [
+    'rgba(76, 175, 80, 0.7)',    // Verde
+    'rgba(255, 193, 7, 0.7)',    // Amarillo
+    'rgba(33, 150, 243, 0.7)',   // Azul
+    'rgba(244, 67, 54, 0.7)',    // Rojo
+    'rgba(156, 39, 176, 0.7)',   // Morado
+    'rgba(255, 87, 34, 0.7)',    // Naranja
+    'rgba(0, 188, 212, 0.7)',    // Turquesa
+    'rgba(233, 30, 99, 0.7)',    // Rosa
+    'rgba(205, 220, 57, 0.7)',   // Lima
+    'rgba(121, 85, 72, 0.7)'     // Café
+  ];
+
+  if (tipoDato === 'ventas') {
+    labels = ventasLabels;
+    data = ventasData;
+    montos = ventasMontos;
+    titulo = 'Ventas';
+    // Multicolor para ventas
+    backgroundColor = tipoGrafico === 'pie' ? coloresVentas.slice(0, data.length) : coloresVentas.slice(0, data.length);
+    borderColor = '#1976d2';
+    datalabelsColor = '#1976d2';
+    ejeColor = '#1976d2';
+    tituloColor = '#1976d2';
+  } else {
+    labels = comprasLabels;
+    data = comprasData;
+    montos = comprasMontos;
+    titulo = 'Compras';
+    // Multicolor para compras
+    backgroundColor = tipoGrafico === 'pie' ? coloresCompras.slice(0, data.length) : coloresCompras.slice(0, data.length);
+    borderColor = '#4CAF50';
+    datalabelsColor = '#4CAF50';
+    ejeColor = '#4CAF50';
+    tituloColor = '#4CAF50';
+  }
+  document.getElementById('graficoTitulo').textContent = titulo;
+  document.getElementById('graficoTitulo').style.color = tituloColor;
+  const maxY = Math.max(...data, 1);
+  const suggestedMax = Math.ceil(maxY * 1.1);
+  const ctx = document.getElementById('graficoUnificado').getContext('2d');
+  if (data.length === 0) {
+    document.getElementById('graficoUnificado').style.display = 'none';
+    document.getElementById('mensajeSinDatos').style.display = 'block';
+    document.getElementById('graficoTitulo').textContent = titulo;
+    document.getElementById('graficoTitulo').style.color = tituloColor;
+    return;
+  } else {
+    document.getElementById('graficoUnificado').style.display = 'block';
+    document.getElementById('mensajeSinDatos').style.display = 'none';
+  }
+  window.chartUnificado = new Chart(ctx, {
+    type: tipoGrafico,
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '',
+        data: data,
+        backgroundColor: backgroundColor,
+        borderColor: borderColor,
+        borderWidth: 2,
+        borderRadius: tipoGrafico === 'bar' ? 8 : 0,
+        maxBarThickness: 32,
+        minBarLength: 2,
+        datalabels: {
+          anchor: tipoGrafico === 'bar' ? 'end' : 'center',
+          align: tipoGrafico === 'bar' ? 'top' : 'center',
+          color: datalabelsColor,
+          font: {
+            weight: 'bold',
+            size: 16
+          }
+        }
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: tipoGrafico === 'pie' },
+        datalabels: {
+          display: true,
+          formatter: function(value) { return value; }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const idx = context.dataIndex;
+              const unidades = context.dataset.data[idx];
+              const monto = montos[idx];
+              return [
+                (tipoDato === 'ventas' ? 'Unidades vendidas: ' : 'Unidades compradas: ') + unidades,
+                (tipoDato === 'ventas' ? 'Monto generado: $' : 'Monto gastado: $') + monto.toLocaleString()
+              ];
+            }
+          }
+        },
+        title: {
+          display: false
+        }
+      },
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: tipoGrafico === 'bar' ? {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: ejeColor,
+            font: { size: 13, weight: 'bold' },
+            maxRotation: 45,
+            minRotation: 0
+          }
+        },
+        y: {
+          beginAtZero: true,
+          suggestedMax: suggestedMax,
+          grid: { color: 'rgba(25, 118, 210, 0.08)' },
+          ticks: {
+            color: ejeColor,
+            font: { size: 14, weight: 'bold' }
+          }
+        }
+      } : {},
+    },
+    plugins: [ChartDataLabels]
+  });
+}
+
+document.getElementById('tipoDatoGrafico').addEventListener('change', function(e) {
+  renderGrafico(e.target.value, document.getElementById('tipoGrafico').value);
+});
+document.getElementById('tipoGrafico').addEventListener('change', function(e) {
+  renderGrafico(document.getElementById('tipoDatoGrafico').value, e.target.value);
+});
+
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+  renderGrafico();
+});
+
+// Función setPeriodo y limpiarFiltros
+function formatDateJS(date) {
+  // Retorna YYYY-MM-DD
+  const d = new Date(date);
+  const month = '' + (d.getMonth() + 1);
+  const day = '' + d.getDate();
+  const year = d.getFullYear();
+  return [year, month.padStart(2, '0'), day.padStart(2, '0')].join('-');
+}
+
+function setPeriodo(tipo) {
+  const hoy = new Date();
+  let fechaInicio = '';
+  let fechaFin = '';
+  switch(tipo) {
+    case 'hoy':
+      fechaInicio = fechaFin = formatDateJS(hoy);
+      break;
+    case 'ayer':
+      const ayer = new Date(hoy);
+      ayer.setDate(hoy.getDate() - 1);
+      fechaInicio = fechaFin = formatDateJS(ayer);
+      break;
+    case 'semana':
+      const inicioSemana = new Date(hoy);
+      inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+      fechaInicio = formatDateJS(inicioSemana);
+      fechaFin = formatDateJS(hoy);
+      break;
+    case 'mes':
+      fechaInicio = formatDateJS(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+      fechaFin = formatDateJS(hoy);
+      break;
+    case 'mes_anterior':
+      const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+      fechaInicio = formatDateJS(mesAnterior);
+      // Último día del mes anterior
+      const ultimoDiaMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+      fechaFin = formatDateJS(ultimoDiaMesAnterior);
+      break;
+    case 'año':
+      fechaInicio = formatDateJS(new Date(hoy.getFullYear(), 0, 1));
+      fechaFin = formatDateJS(hoy);
+      break;
+  }
+  document.getElementById('fecha_inicio').value = fechaInicio;
+  document.getElementById('fecha_fin').value = fechaFin;
+  document.getElementById('formFiltrosFechas').submit();
+}
+
+function limpiarFiltros() {
+  document.getElementById('fecha_inicio').value = '';
+  document.getElementById('fecha_fin').value = '';
+  document.getElementById('formFiltrosFechas').submit();
+}
+</script>
+
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var btn = document.getElementById('mobileMenuToggle');
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  if (btn && sidebar && overlay) {
+    btn.addEventListener('click', function() {
+      sidebar.classList.toggle('mobile-open');
+      overlay.classList.toggle('active');
+    });
+    overlay.addEventListener('click', function() {
+      sidebar.classList.remove('mobile-open');
+      overlay.classList.remove('active');
+    });
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,1371 @@
+{% extends 'home/base_main.html' %}
+{% load static %}
+
+{% block title %}Perfiles - Inventario{% endblock %}
+
+{% block content %}
+<h1 class="fw-bold mb-0 mt-6 mb-2">Perfiles de Usuario</h1>
+
+<div class="action-bar d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <button
+      type="button"
+      class="btn btn-primary"
+      data-bs-toggle="modal"
+      data-bs-target="#addPerfilModal"
+      title="Agregar perfil"
+    >
+      <i class="bi bi-plus-circle"></i>
+    </button>
+
+    <input
+      type="text"
+      class="form-control"
+      placeholder="Buscar perfiles..."
+      aria-label="Buscar perfil"
+      id="searchPerfiles"
+      style="max-width: 300px;"
+    />
+  </div>
+</div>
+
+
+
+{% if usuarios %}
+<div class="card shadow-lg border-0 mb-4">
+  <div class="card-header bg-gradient text-white fw-bold" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);">
+    <i class="bi bi-people me-2"></i>Lista de Perfiles
+  </div>
+  <div class="card-body px-4 py-4">
+    <div class="table-responsive">
+      <table id="tablaPerfiles" class="table datatable table-hover align-middle" style="width: 100%;">
+        <thead class="table-dark">
+          <tr>
+            <th class="border-0">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-person text-primary"></i>
+                <span>Nombre de Usuario</span>
+              </div>
+            </th>
+            <th class="border-0">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-envelope text-primary"></i>
+                <span>Correo Electrónico</span>
+              </div>
+            </th>
+            <th class="border-0 text-center">
+              <div class="d-flex align-items-center justify-content-center gap-2">
+                <i class="bi bi-gear text-primary"></i>
+                <span>Acciones</span>
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for usuario in usuarios %}
+            <tr id="fila-usuario-{{ usuario.id_usuario }}">
+              <td>
+                <div class="d-flex align-items-center gap-3">
+                  <div class="avatar-circle bg-primary bg-opacity-10 text-primary">
+                    {{ usuario.nombre_usuario|first|upper }}
+                  </div>
+                  <div>
+                    <div class="fw-medium">{{ usuario.nombre_usuario }}</div>
+                    <small class="text-muted">Usuario del sistema</small>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-envelope text-muted"></i>
+                  <span>{% if usuario.correo %}{{ usuario.correo }}{% else %}<span class="text-muted fst-italic">Sin correo</span>{% endif %}</span>
+                </div>
+              </td>
+              <td class="text-center">
+                <div class="btn-group">
+                  <button 
+                    type="button"
+                    class="btn btn-warning btn-sm" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#editPerfilModal"
+                    data-id="{{ usuario.id_usuario }}" 
+                    data-nombre="{{ usuario.nombre_usuario|escapejs }}"
+                    data-correo="{{ usuario.correo|default:''|escapejs }}"
+                    title="Editar perfil">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+
+                  <button 
+                    type="button"
+                    class="btn btn-danger btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#deleteModal"
+                    data-id="{{ usuario.id_usuario }}"
+                    data-nombre="{{ usuario.nombre_usuario|escapejs }}"
+                    title="Eliminar perfil"
+                  >
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% else %}
+  <div class="card shadow-lg border-0">
+    <div class="card-body text-center px-4 py-4">
+      <div class="alert alert-info mb-0">No hay perfiles registrados.</div>
+    </div>
+  </div>
+{% endif %}
+
+<!-- Modal de confirmación de eliminación (solo uno, reutilizable) -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header bg-danger text-white rounded-top-4">
+        <h5 class="modal-title fw-bold"><i class="bi bi-trash me-2"></i> Confirmar Eliminación</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <div id="modalContentNormal" style="display: none;">
+          <p>¿Está seguro que desea eliminar el perfil de <strong id="nombreUsuarioEliminar"></strong>?</p>
+        </div>
+        <div id="modalContentError" style="display: none;">
+          <div class="alert alert-warning mb-0">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>No se puede eliminar el último perfil</strong>
+            <p class="mb-0 mt-2">El sistema requiere al menos un perfil activo para funcionar correctamente.</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer px-4 pb-4">
+        <button type="button" class="btn btn-danger rounded-pill px-4 fw-semibold" id="btnConfirmarEliminar" style="display: none;">Eliminar</button>
+        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Perfil -->
+<div class="modal fade" id="editPerfilModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <form method="post" id="editPerfilForm">
+        {% csrf_token %}
+        <div class="modal-header bg-warning text-dark rounded-top-4">
+          <h5 class="modal-title fw-bold"><i class="bi bi-pencil me-2"></i> Editar Perfil</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body px-4 py-3">
+          <input type="hidden" name="id" id="edit-id" />
+          <div class="mb-3">
+            <label for="edit-nombre" class="form-label fw-semibold">Nombre de Usuario</label>
+            <input type="text" id="edit-nombre" name="nombre_usuario" class="form-control rounded-pill px-3" required />
+          </div>
+          <div class="mb-3">
+            <label for="edit-correo" class="form-label fw-semibold">Correo Electrónico</label>
+            <input type="email" id="edit-correo" name="correo" class="form-control rounded-pill px-3" />
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="cambiarPassword">
+              <label class="form-check-label" for="cambiarPassword">
+                <i class="bi bi-key text-primary me-2"></i>
+                Cambiar contraseña
+              </label>
+            </div>
+          </div>
+          <div id="passwordFields" class="d-none">
+            <div class="mb-3">
+              <label for="edit-password" class="form-label fw-semibold">Nueva Contraseña</label>
+              <input type="password" id="edit-password" name="password" class="form-control rounded-pill px-3" minlength="8" maxlength="20" />
+            </div>
+            <div class="mb-3">
+              <label for="edit-password2" class="form-label fw-semibold">Confirmar Nueva Contraseña</label>
+              <input type="password" id="edit-password2" name="password2" class="form-control rounded-pill px-3" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer px-4 pb-4">
+          <button type="submit" class="btn btn-warning rounded-pill px-4 fw-semibold">Guardar</button>
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Añadir Perfil -->
+<div class="modal fade" id="addPerfilModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <form method="post" action="{% url 'nuevo_perfil' %}">
+        {% csrf_token %}
+        <div class="modal-header bg-primary text-white rounded-top-4">
+          <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i> Añadir Perfil</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body px-4 py-3">
+          <div class="mb-3">
+            <label for="add-username" class="form-label fw-semibold">Nombre de Usuario</label>
+            <input type="text" id="add-username" name="username" class="form-control rounded-pill px-3" required 
+                   pattern="^[a-zA-Z0-9_]+$" minlength="3" maxlength="30" 
+                   title="Solo letras, números y guiones bajos" />
+            <div class="form-text">
+              <i class="bi bi-info-circle me-1"></i>
+              Entre 3 y 30 caracteres, solo letras, números y guiones bajos
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="add-email" class="form-label fw-semibold">Correo Electrónico</label>
+            <input type="email" id="add-email" name="email" class="form-control rounded-pill px-3" required />
+            <div class="form-text">
+              <i class="bi bi-info-circle me-1"></i>
+              Ejemplo: usuario@correo.com
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="add-password" class="form-label fw-semibold">Contraseña</label>
+            <input type="password" id="add-password" name="password" class="form-control rounded-pill px-3" required 
+                   minlength="8" maxlength="20" 
+                   pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,20}$" />
+            <div class="form-text">
+              <i class="bi bi-shield-lock me-1"></i>
+              Mínimo 8 caracteres, al menos una letra y un número
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="add-password2" class="form-label fw-semibold">Confirmar Contraseña</label>
+            <input type="password" id="add-password2" name="password2" class="form-control rounded-pill px-3" required />
+            <div class="form-text">
+              <i class="bi bi-check-circle me-1"></i>
+              Debe coincidir con la contraseña
+            </div>
+          </div>
+          <!-- Restaurar el checkbox y label 'Mostrar contraseñas', pero sin el icono de ojo -->
+          <div class="mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="add-mostrarPassword">
+              <label class="form-check-label" for="add-mostrarPassword">
+                Mostrar contraseñas
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer px-4 pb-4">
+          <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">Guardar</button>
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'home/js/undo-delete.js' %}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Validación en tiempo real del formulario de agregar
+  const addForm = document.querySelector('#addPerfilModal form');
+  const addUsername = document.getElementById('add-username');
+  const addEmail = document.getElementById('add-email');
+
+  if (addUsername) {
+    addUsername.addEventListener('input', function() {
+      const value = this.value;
+      const isValid = /^[a-zA-Z0-9_]+$/.test(value);
+      const isLengthValid = value.length >= 3 && value.length <= 30;
+      
+      if (!isValid) {
+        this.setCustomValidity('Solo se permiten letras, números y guiones bajos');
+      } else if (!isLengthValid) {
+        this.setCustomValidity('El nombre debe tener entre 3 y 30 caracteres');
+      } else {
+        this.setCustomValidity('');
+      }
+    });
+  }
+
+  if (addEmail) {
+    addEmail.addEventListener('input', function() {
+      const value = this.value;
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      
+      if (!emailRegex.test(value)) {
+        this.setCustomValidity('Ingresa un correo electrónico válido');
+      } else {
+        this.setCustomValidity('');
+      }
+    });
+  }
+
+  if (addForm) {
+    addForm.addEventListener('submit', function(event) {
+      if (!addForm.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      // Validar que las contraseñas coincidan
+      if (addPassword && addPassword2 && addPassword.value !== addPassword2.value) {
+        addPassword2.setCustomValidity('Las contraseñas no coinciden');
+        event.preventDefault();
+        event.stopPropagation();
+      } else if (addPassword2) {
+        addPassword2.setCustomValidity('');
+      }
+
+      addForm.classList.add('was-validated');
+    });
+  }
+
+  // Limpiar formulario cuando se cierre el modal
+  const addPerfilModal = document.getElementById('addPerfilModal');
+  if (addPerfilModal) {
+    addPerfilModal.addEventListener('hidden.bs.modal', function() {
+      const form = this.querySelector('form');
+      if (form) {
+        form.reset();
+        form.classList.remove('was-validated');
+        
+        // Limpiar validaciones personalizadas
+        const inputs = form.querySelectorAll('input');
+        inputs.forEach(input => {
+          input.setCustomValidity('');
+        });
+        
+        // Limpiar mensajes de error en el modal
+        const alertDiv = this.querySelector('.modal-alert');
+        if (alertDiv) {
+          alertDiv.remove();
+        }
+        
+        // Restaurar tipo de contraseñas
+        const addPassword = document.getElementById('add-password');
+        const addPassword2 = document.getElementById('add-password2');
+        
+        if (addPassword) addPassword.type = 'password';
+        if (addPassword2) addPassword2.type = 'password';
+      }
+    });
+  }
+});
+</script>
+<style>
+  .icon-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .icon-circle i {
+    font-size: 1.5rem;
+  }
+
+  .avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+
+  .search-group {
+    max-width: 400px;
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+
+  .search-group .input-group-text {
+    padding: 0.75rem 1rem;
+  }
+
+  .search-group .form-control {
+    padding: 0.75rem 1rem;
+  }
+
+  .search-group i {
+    font-size: 1.1rem;
+  }
+
+  .table > :not(caption) > * > * {
+    padding: 1rem;
+  }
+
+  .btn-group .btn {
+    padding: 0.5rem;
+    transition: all 0.2s ease;
+  }
+
+  .btn-group .btn:hover {
+    transform: translateY(-1px);
+  }
+
+  .btn-group .btn i {
+    font-size: 1.1rem;
+  }
+
+  .modal-content {
+    border: none;
+    border-radius: 1rem;
+  }
+
+  .table thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+  }
+
+  .table tbody tr {
+    transition: all 0.2s ease;
+  }
+
+  .table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+
+  .btn-primary {
+    padding: 0.75rem 1.25rem;
+  }
+
+  .btn-primary i {
+    font-size: 1.1rem;
+  }
+
+  .card-header.bg-gradient {
+    background: #fff !important;
+    color: #222 !important;
+    font-weight: 600;
+    font-size: 1.08rem;
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem 0.75rem 0 0;
+    border-bottom: 1.5px solid #e5e7eb;
+    letter-spacing: 0.01em;
+    box-shadow: none;
+  }
+
+  /* Deshabilitar estilos de validación HTML5 */
+  #addPerfilModal input:valid,
+  #addPerfilModal input:invalid,
+  #addPerfilModal input:required,
+  #addPerfilModal input:optional {
+    box-shadow: none !important;
+    border-color: #ced4da !important;
+  }
+
+  #addPerfilModal input:focus {
+    border-color: #86b7fe !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+  }
+
+  #addPerfilModal input:focus:valid,
+  #addPerfilModal input:focus:invalid {
+    border-color: #86b7fe !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+  }
+
+  /* Compactar botones de acción en la tabla de perfiles */
+  .btn-group .btn {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    border-radius: 0 !important;
+  }
+  .btn-group .btn:first-child {
+    border-top-left-radius: 0.5rem !important;
+    border-bottom-left-radius: 0.5rem !important;
+  }
+  .btn-group .btn:last-child {
+    border-top-right-radius: 0.5rem !important;
+    border-bottom-right-radius: 0.5rem !important;
+  }
+
+  /* Estilos para DataTables mejorados */
+  .dataTables_wrapper .dataTables_length select {
+    border-radius: 0.375rem;
+    border: 1px solid #ced4da;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .dataTables_wrapper .dataTables_filter input {
+    border-radius: 0.375rem;
+    border: 1px solid #ced4da;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .dataTables_wrapper .dataTables_filter input:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  }
+
+  .dataTables_wrapper .paginate_button {
+    border-radius: 0.375rem !important;
+    border: 1px solid #dee2e6 !important;
+    margin: 0 2px !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .dataTables_wrapper .paginate_button:hover {
+    background-color: #e9ecef !important;
+    border-color: #adb5bd !important;
+    transform: translateY(-1px);
+  }
+
+  .dataTables_wrapper .paginate_button.current {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: white !important;
+  }
+
+  .dataTables_wrapper .paginate_button.disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+  }
+
+  .dataTables_wrapper .dataTables_info {
+    font-size: 0.875rem;
+    color: #6c757d;
+  }
+
+  .dataTables_wrapper .dataTables_paginate {
+    margin-top: 1rem;
+  }
+
+  /* Estilos para dispositivos táctiles */
+  .paginate_button.touch-active {
+    transform: scale(0.95);
+  }
+
+  /* Mejoras para responsividad */
+  @media (max-width: 768px) {
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    
+    .dataTables_wrapper .dataTables_paginate {
+      justify-content: center !important;
+    }
+  }
+</style>
+<script>
+  $(document).ready(function () {
+    // Inicializar tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    const tabla = $('#tablaPerfiles').DataTable({
+      language: {
+        info: "Mostrando _START_ de _END_ | Total _TOTAL_ perfil(es)",
+        infoEmpty: "Sin perfiles para mostrar",
+        lengthMenu: "Mostrar _MENU_ perfiles",
+        search: "🔍 Buscar:",
+        zeroRecords: "No se encontraron resultados.",
+        infoFiltered: "(filtrado de un total de _MAX_ perfil(es))",
+        paginate: {
+          first: "",
+          last: "",
+          next: "",
+          previous: ""
+        }
+      },
+      dom: 'lrtip',
+      pageLength: 10,
+      lengthMenu: [5, 10, 15, 25],
+      columnDefs: [
+        { orderable: false, targets: [2] }
+      ],
+      pagingType: 'full_numbers',
+    });
+
+    // Hacer la tabla global para poder acceder desde las funciones
+    window.tabla = tabla;
+
+    // Configuración global para la paginación de DataTables (igual que productos)
+    $.fn.DataTable.ext.pager.numbers_length = 5;
+
+    // Búsqueda personalizada mejorada (igual que productos)
+    $('#searchPerfiles').on('input', function () {
+      const val = this.value.toLowerCase();
+
+      $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+        const nombre = data[0].toLowerCase();
+        const correo = data[1].toLowerCase();
+        return nombre.includes(val) || correo.includes(val);
+      });
+
+      tabla.draw();
+      $.fn.dataTable.ext.search.pop();
+    });
+
+
+
+    // Variables para el modal de eliminación
+    let idUsuarioEliminar = null;
+    let filaUsuario = null;
+
+    // Abrir modal y guardar id
+    $(document).on('click', 'button[data-bs-target="#deleteModal"]', function () {
+      idUsuarioEliminar = $(this).data('id');
+      filaUsuario = $(this).closest('tr');
+      const nombre = $(this).data('nombre');
+      
+      // Verificar si es el último perfil antes de abrir el modal
+      const totalFilas = tabla.rows().count();
+      
+      if (totalFilas <= 1) {
+        // Es el último perfil, mostrar modal con mensaje de error
+        $('#modalContentNormal').hide();
+        $('#modalContentError').show();
+        $('#btnConfirmarEliminar').hide();
+        $('#deleteModal').modal('show');
+        return;
+      }
+      
+      // Si no es el último perfil, mostrar modal normal
+      $('#modalContentError').hide();
+      $('#modalContentNormal').show();
+      $('#btnConfirmarEliminar').show();
+      $('#nombreUsuarioEliminar').text(nombre);
+    });
+
+    // Resetear modal cuando se cierre
+    $('#deleteModal').on('hidden.bs.modal', function () {
+      $('#modalContentNormal').hide();
+      $('#modalContentError').hide();
+      $('#btnConfirmarEliminar').hide();
+    });
+
+    // Confirmar eliminación por AJAX
+    $('#btnConfirmarEliminar').on('click', function () {
+      if (!idUsuarioEliminar) return;
+      
+      console.log('Intentando eliminar usuario ID:', idUsuarioEliminar);
+      
+      $.ajax({
+        url: `/perfiles/eliminar/${idUsuarioEliminar}/`,
+        type: 'POST',
+        data: {
+          'csrfmiddlewaretoken': '{{ csrf_token }}'
+        },
+        success: function (data) {
+          console.log('Respuesta exitosa:', data);
+          // Cerrar modal
+          $('#deleteModal').modal('hide');
+          
+          // Guardar datos del usuario eliminado en sessionStorage para poder restaurarlo
+          const usuarioEliminado = {
+            id: idUsuarioEliminar,
+            nombre: $('#nombreUsuarioEliminar').text(),
+            filaHtml: filaUsuario.prop('outerHTML'),
+            timestamp: new Date().getTime()
+          };
+          sessionStorage.setItem('usuarioEliminado', JSON.stringify(usuarioEliminado));
+          
+          // Eliminar fila de la tabla
+          tabla.row(filaUsuario).remove().draw();
+          
+          // Eliminar cualquier mensaje existente
+          $('.alert').remove();
+          
+          // Mostrar mensaje de éxito con opción de deshacer usando notificación push
+          mostrarMensajeConDeshacer('Perfil eliminado exitosamente.', idUsuarioEliminar);
+        },
+        error: function (xhr, status, error) {
+          console.log('Error en AJAX:', xhr.responseText);
+          console.log('Status:', status);
+          console.log('Error:', error);
+          
+          $('#deleteModal').modal('hide');
+          let mensaje = 'Error al eliminar el perfil.';
+          
+          try {
+            const response = JSON.parse(xhr.responseText);
+            if (response.message) {
+              mensaje = response.message;
+            }
+          } catch (e) {
+            console.log('No se pudo parsear la respuesta JSON');
+          }
+          
+          // Mostrar mensaje de error con notificación push
+          mostrarMensajeEnPagina(mensaje, 'danger');
+        }
+      });
+      
+            // Evento para el botón de deshacer eliminación
+      $(document).on('click', '#btnDeshacerEliminacion', function() {
+        const usuarioEliminadoStr = sessionStorage.getItem('usuarioEliminado');
+        if (!usuarioEliminadoStr) return;
+        
+        const usuarioEliminado = JSON.parse(usuarioEliminadoStr);
+        
+        // Verificar que no hayan pasado más de 5 minutos (300000 ms)
+        const tiempoTranscurrido = new Date().getTime() - usuarioEliminado.timestamp;
+        if (tiempoTranscurrido > 300000) {
+          alert('El tiempo para deshacer ha expirado (5 minutos).');
+          sessionStorage.removeItem('usuarioEliminado');
+          $('.alert-danger').first().fadeOut();
+          return;
+        }
+        
+        console.log('Intentando restaurar usuario ID:', usuarioEliminado.id);
+        
+        // Hacer petición AJAX para restaurar el usuario en la base de datos
+        $.ajax({
+          url: `/perfiles/restaurar/${usuarioEliminado.id}/`,
+          type: 'POST',
+          data: {
+            'csrfmiddlewaretoken': '{{ csrf_token }}'
+          },
+          success: function (data) {
+            console.log('Respuesta exitosa de restauración:', data);
+            
+            // Ocultar el mensaje de eliminación
+            $('.alert-danger').first().fadeOut();
+            
+            // Restaurar la fila en la tabla
+            const nuevaFila = $(usuarioEliminado.filaHtml);
+            tabla.row.add(nuevaFila).draw();
+            
+            // Eliminar cualquier mensaje existente
+            $('.alert').remove();
+            
+            // Mostrar mensaje de restauración exitosa con notificación push
+            mostrarMensajeEnPagina('Perfil restaurado correctamente.', 'success');
+            
+            // Limpiar datos del sessionStorage
+            sessionStorage.removeItem('usuarioEliminado');
+          },
+          error: function (xhr, status, error) {
+            console.log('Error en AJAX de restauración:', xhr.responseText);
+            
+            let mensaje = 'Error al restaurar el perfil.';
+            
+            try {
+              const response = JSON.parse(xhr.responseText);
+              if (response.message) {
+                mensaje = response.message;
+              }
+            } catch (e) {
+              console.log('No se pudo parsear la respuesta JSON');
+            }
+            
+            // Eliminar cualquier mensaje existente
+            $('.alert').remove();
+            
+            // Mostrar mensaje de error con notificación push
+            mostrarMensajeEnPagina(mensaje, 'danger');
+          }
+        });
+      });
+    });
+
+    // Funcionalidad del modal de editar perfil
+    let idUsuarioEditar = null;
+
+    // Abrir modal de editar y cargar datos
+    $(document).on('click', 'button[data-bs-target="#editPerfilModal"]', function () {
+      idUsuarioEditar = $(this).data('id');
+      const nombre = $(this).data('nombre');
+      const correo = $(this).data('correo');
+      
+      $('#edit-id').val(idUsuarioEditar);
+      $('#edit-nombre').val(nombre);
+      $('#edit-correo').val(correo);
+      
+      // Limpiar campos de contraseña
+      $('#edit-password').val('');
+      $('#edit-password2').val('');
+      $('#cambiarPassword').prop('checked', false);
+      $('#passwordFields').addClass('d-none');
+    });
+
+    // Mostrar/ocultar campos de contraseña
+    $('#cambiarPassword').on('change', function() {
+      if (this.checked) {
+        $('#passwordFields').removeClass('d-none');
+        $('#edit-password').prop('required', true);
+        $('#edit-password2').prop('required', true);
+      } else {
+        $('#passwordFields').addClass('d-none');
+        $('#edit-password').prop('required', false);
+        $('#edit-password2').prop('required', false);
+        $('#edit-password').val('');
+        $('#edit-password2').val('');
+      }
+    });
+
+    // Enviar formulario de editar perfil
+    $('#editPerfilForm').on('submit', function(e) {
+      e.preventDefault();
+      
+      if (!idUsuarioEditar) return;
+      
+      const formData = new FormData(this);
+      const submitBtn = $(this).find('button[type="submit"]');
+      const originalText = submitBtn.html();
+      
+      submitBtn.prop('disabled', true);
+      submitBtn.html('<i class="bi bi-hourglass-split me-2"></i>Guardando...');
+      
+      $.ajax({
+        url: `/perfiles/editar/${idUsuarioEditar}/ajax/`,
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(data) {
+          $('#editPerfilModal').modal('hide');
+          
+          // Eliminar cualquier mensaje existente
+          $('.alert').remove();
+          
+          // Mostrar mensaje de éxito con notificación push
+          mostrarMensajeEnPagina('Perfil actualizado correctamente.', 'success');
+          
+          // Recargar la página para mostrar los cambios
+          setTimeout(function() {
+            location.reload();
+          }, 1500);
+        },
+        error: function(xhr, status, error) {
+          let mensaje = 'Error al actualizar el perfil.';
+          
+          try {
+            const response = JSON.parse(xhr.responseText);
+            if (response.message) {
+              mensaje = response.message;
+            }
+          } catch (e) {
+            console.log('No se pudo parsear la respuesta JSON');
+          }
+          
+          // Mostrar mensaje de error con notificación push
+          mostrarMensajeEnPagina(mensaje, 'danger');
+        },
+        complete: function() {
+          submitBtn.prop('disabled', false);
+          submitBtn.html(originalText);
+        }
+      });
+    });
+
+    // Funcionalidad AJAX para el formulario de agregar perfil
+    const addPerfilForm = document.getElementById('addPerfilModal').querySelector('form');
+    
+    // Función para mostrar errores en el modal
+    function mostrarErrorEnModal(mensaje) {
+      const modal = document.getElementById('addPerfilModal');
+      const modalBody = modal.querySelector('.modal-body');
+      
+      // Limpiar mensajes anteriores
+      const existingAlert = modal.querySelector('.modal-alert');
+      if (existingAlert) {
+        existingAlert.remove();
+      }
+      
+      // Crear nuevo mensaje de error
+      const alertDiv = document.createElement('div');
+      alertDiv.className = 'modal-alert alert alert-danger mt-3';
+      alertDiv.innerHTML = mensaje;
+      
+      // Insertar después del último campo del formulario
+      const lastField = modalBody.querySelector('.mb-3:last-child');
+      if (lastField) {
+        lastField.parentNode.insertBefore(alertDiv, lastField.nextSibling);
+      } else {
+        modalBody.appendChild(alertDiv);
+      }
+    }
+    
+    if (addPerfilForm) {
+      // Deshabilitar validación HTML5 automática
+      addPerfilForm.setAttribute('novalidate', 'novalidate');
+      
+      addPerfilForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Validaciones manuales
+        const username = document.getElementById('add-username').value.trim();
+        const email = document.getElementById('add-email').value.trim();
+        const password = document.getElementById('add-password').value;
+        const password2 = document.getElementById('add-password2').value;
+        
+        // Limpiar mensajes de error anteriores en el modal
+        const modal = document.getElementById('addPerfilModal');
+        const existingAlert = modal.querySelector('.modal-alert');
+        if (existingAlert) {
+          existingAlert.remove();
+        }
+        
+        // Validar campos obligatorios
+        if (!username || !email || !password || !password2) {
+          mostrarErrorEnModal('Todos los campos son obligatorios.');
+          return;
+        }
+        
+        // Validar longitud del nombre de usuario
+        if (username.length < 3 || username.length > 30) {
+          mostrarErrorEnModal('El nombre de usuario debe tener entre 3 y 30 caracteres.');
+          return;
+        }
+        
+        // Validar formato del nombre de usuario
+        const usernameRegex = /^[a-zA-Z0-9_]+$/;
+        if (!usernameRegex.test(username)) {
+          mostrarErrorEnModal('El nombre de usuario solo puede contener letras, números y guiones bajos.');
+          return;
+        }
+        
+        // Validar formato del email
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(email)) {
+          mostrarErrorEnModal('Ingresa un correo electrónico válido.');
+          return;
+        }
+        
+        // Validar longitud de la contraseña
+        if (password.length < 8 || password.length > 20) {
+          mostrarErrorEnModal('La contraseña debe tener entre 8 y 20 caracteres.');
+          return;
+        }
+        
+        // Validar que la contraseña contenga al menos una letra y un número
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,20}$/;
+        if (!passwordRegex.test(password)) {
+          mostrarErrorEnModal('La contraseña debe contener al menos una letra y un número.');
+          return;
+        }
+        
+        // Validar que las contraseñas coincidan
+        if (password !== password2) {
+          mostrarErrorEnModal('Las contraseñas no coinciden.');
+          return;
+        }
+        
+        const formData = new FormData(this);
+        const submitButton = modal.querySelector('button[type="submit"]');
+        const originalText = submitButton.innerHTML;
+        
+        // Deshabilitar botón
+        submitButton.disabled = true;
+        submitButton.innerHTML = 'Guardando...';
+        
+        fetch(this.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        })
+        .then(response => {
+          return response.json().catch(() => null);
+        })
+        .then(data => {
+          if (data && data.success) {
+            // Operación exitosa
+            const modalInstance = bootstrap.Modal.getInstance(modal);
+            if (modalInstance) modalInstance.hide();
+            
+            // Eliminar cualquier mensaje existente
+            $('.alert').remove();
+            
+            // Mostrar mensaje de éxito con notificación push
+            mostrarMensajeEnPagina(data.message, 'success');
+            
+            // Agregar nueva fila a la tabla dinámicamente
+            if (data.usuario) {
+              const nuevaFila = `
+                <tr id="fila-usuario-${data.usuario.id}">
+                  <td>
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="avatar-circle bg-primary bg-opacity-10 text-primary">
+                        ${data.usuario.nombre.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div class="fw-medium">${data.usuario.nombre}</div>
+                        <small class="text-muted">Usuario del sistema</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="bi bi-envelope text-muted"></i>
+                      <span>${data.usuario.correo || '<span class="text-muted fst-italic">Sin correo</span>'}</span>
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <div class="btn-group">
+                      <button 
+                        type="button"
+                        class="btn btn-warning btn-sm" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#editPerfilModal"
+                        data-id="${data.usuario.id}" 
+                        data-nombre="${data.usuario.nombre}"
+                        data-correo="${data.usuario.correo || ''}"
+                        title="Editar perfil">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+
+                      <button 
+                        type="button"
+                        class="btn btn-danger btn-sm"
+                        data-bs-toggle="modal"
+                        data-bs-target="#deleteModal"
+                        data-id="${data.usuario.id}"
+                        data-nombre="${data.usuario.nombre}"
+                        title="Eliminar perfil"
+                      >
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+              
+              // Agregar la nueva fila a la tabla DataTable
+              tabla.row.add($(nuevaFila)).draw();
+              
+              // Ocultar mensaje de "no hay perfiles" si existe
+              $('.alert-info').fadeOut();
+            }
+          } else if (data && !data.success) {
+            // Error de validación - mostrar en el modal
+            mostrarErrorEnModal(data.message);
+          } else {
+            // Error general
+            throw new Error(data ? data.message : 'Error al agregar el perfil');
+          }
+        })
+        .catch(error => {
+          console.error('Error en agregar perfil:', error);
+          mostrarErrorEnModal(error.message || 'Error al agregar el perfil');
+        })
+        .finally(() => {
+          // Restaurar botón
+          submitButton.disabled = false;
+          submitButton.innerHTML = originalText;
+        });
+      });
+    }
+  });
+</script>
+
+<script>
+// Funciones de notificaciones push (mismo formato que categorías)
+function mostrarMensajeEnPagina(mensaje, tipo) {
+  console.log('Mostrando notificación push:', mensaje, tipo);
+  
+  // Crear el contenedor de notificaciones si no existe
+  let notificationContainer = document.getElementById('notification-container');
+  if (!notificationContainer) {
+    notificationContainer = document.createElement('div');
+    notificationContainer.id = 'notification-container';
+    notificationContainer.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 350px;
+    `;
+    document.body.appendChild(notificationContainer);
+  }
+  
+  // Crear la notificación
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  notification.style.cssText = `
+    background: ${tipo === 'danger' ? '#dc3545' : '#198754'};
+    color: white;
+    padding: 16px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateX(400px);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    position: relative;
+    overflow: hidden;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+  `;
+  
+  // Agregar barra de progreso
+  const progressBar = document.createElement('div');
+  progressBar.style.cssText = `
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.3);
+    width: 100%;
+    transform: scaleX(1);
+    transform-origin: left;
+    transition: transform 3s linear;
+  `;
+  
+  notification.appendChild(progressBar);
+  
+  // Contenido de la notificación
+  notification.innerHTML += `
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="flex: 1;">
+        <div style="font-size: 16px; font-weight: 600; text-align: center;">
+          ${mensaje}
+        </div>
+      </div>
+      <button onclick="this.parentElement.parentElement.remove()" 
+              style="background: none; border: none; color: white; font-size: 18px; cursor: pointer; padding: 0; margin-left: 12px; opacity: 0.7; transition: opacity 0.2s;">
+        ×
+      </button>
+    </div>
+  `;
+  
+  // Agregar la notificación al contenedor
+  notificationContainer.appendChild(notification);
+  
+  // Animar entrada
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)';
+  }, 10);
+  
+  // Animar barra de progreso
+  setTimeout(() => {
+    progressBar.style.transform = 'scaleX(0)';
+  }, 100);
+  
+  // Auto-remover después de 3 segundos
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.style.transform = 'translateX(400px)';
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.remove();
+        }
+      }, 300);
+    }
+  }, 3000);
+  
+  // Efecto hover
+  notification.addEventListener('mouseenter', () => {
+    notification.style.transform = 'translateX(0) scale(1.02)';
+    progressBar.style.transition = 'none';
+  });
+  
+  notification.addEventListener('mouseleave', () => {
+    notification.style.transform = 'translateX(0) scale(1)';
+    progressBar.style.transition = 'transform 3s linear';
+  });
+}
+
+// Función para mostrar mensaje con botón deshacer
+function mostrarMensajeConDeshacer(mensaje, usuarioId) {
+  console.log('Mostrando mensaje con deshacer:', mensaje, usuarioId);
+  
+  // Crear el contenedor de notificaciones si no existe
+  let notificationContainer = document.getElementById('notification-container');
+  if (!notificationContainer) {
+    notificationContainer = document.createElement('div');
+    notificationContainer.id = 'notification-container';
+    notificationContainer.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 350px;
+    `;
+    document.body.appendChild(notificationContainer);
+  }
+  
+  // Crear la notificación con botón deshacer
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  notification.style.cssText = `
+    background: #dc3545;
+    color: white;
+    padding: 16px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateX(400px);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    position: relative;
+    overflow: hidden;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+  `;
+  
+  // Agregar barra de progreso
+  const progressBar = document.createElement('div');
+  progressBar.style.cssText = `
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.3);
+    width: 100%;
+    transform: scaleX(1);
+    transform-origin: left;
+    transition: transform 10s linear;
+  `;
+  
+  notification.appendChild(progressBar);
+  
+  // Contenido de la notificación con botón deshacer
+  notification.innerHTML += `
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="flex: 1;">
+        <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px; text-align: center;">
+          ${mensaje}
+        </div>
+        <div style="text-align: center;">
+          <button id="btnDeshacerEliminacion" 
+                  onclick="restaurarUsuario(${usuarioId}, this)" 
+                  style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: all 0.2s; font-weight: 500;">
+            Deshacer
+          </button>
+        </div>
+      </div>
+      <button onclick="this.parentElement.parentElement.remove()" 
+              style="background: none; border: none; color: white; font-size: 18px; cursor: pointer; padding: 0; margin-left: 12px; opacity: 0.7; transition: opacity 0.2s;">
+        ×
+      </button>
+    </div>
+  `;
+  
+  // Agregar la notificación al contenedor
+  notificationContainer.appendChild(notification);
+  
+  // Animar entrada
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)';
+  }, 10);
+  
+  // Animar barra de progreso
+  setTimeout(() => {
+    progressBar.style.transform = 'scaleX(0)';
+  }, 100);
+  
+  // Auto-remover después de 10 segundos
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.style.transform = 'translateX(400px)';
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.remove();
+        }
+      }, 300);
+    }
+  }, 10000);
+  
+  // Efecto hover
+  notification.addEventListener('mouseenter', () => {
+    notification.style.transform = 'translateX(0) scale(1.02)';
+    progressBar.style.transition = 'none';
+  });
+  
+  notification.addEventListener('mouseleave', () => {
+    notification.style.transform = 'translateX(0) scale(1)';
+    progressBar.style.transition = 'transform 10s linear';
+  });
+}
+
+// Función para restaurar usuario (ya existente, solo actualizar para usar notificaciones push)
+function restaurarUsuario(usuarioId, button) {
+  const usuarioEliminadoStr = sessionStorage.getItem('usuarioEliminado');
+  if (!usuarioEliminadoStr) return;
+  
+  const usuarioEliminado = JSON.parse(usuarioEliminadoStr);
+  
+  // Verificar que no hayan pasado más de 5 minutos (300000 ms)
+  const tiempoTranscurrido = new Date().getTime() - usuarioEliminado.timestamp;
+  if (tiempoTranscurrido > 300000) {
+    mostrarMensajeEnPagina('El tiempo para deshacer ha expirado (5 minutos).', 'danger');
+    sessionStorage.removeItem('usuarioEliminado');
+    return;
+  }
+  
+  // Deshabilitar botón
+  button.disabled = true;
+  button.textContent = 'Restaurando...';
+  button.style.opacity = '0.7';
+  
+  // Hacer petición AJAX para restaurar el usuario
+  fetch(`/perfiles/restaurar/${usuarioId}/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+      'Content-Type': 'application/json',
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Ocultar la notificación de eliminación
+      const notification = button.closest('.notification');
+      if (notification) {
+        notification.style.transform = 'translateX(400px)';
+        setTimeout(() => {
+          if (notification.parentElement) {
+            notification.remove();
+          }
+        }, 300);
+      }
+      
+      // Restaurar la fila en la tabla usando la variable global
+      if (window.tabla && usuarioEliminado.filaHtml) {
+        const nuevaFila = $(usuarioEliminado.filaHtml);
+        window.tabla.row.add(nuevaFila).draw();
+        
+        // Ocultar mensaje de "no hay perfiles" si existe
+        $('.alert-info').fadeOut();
+      }
+      
+      // Mostrar mensaje de éxito
+      mostrarMensajeEnPagina('Perfil restaurado correctamente.', 'success');
+      
+      // Limpiar datos del sessionStorage
+      sessionStorage.removeItem('usuarioEliminado');
+    } else {
+      throw new Error(data.message || 'Error al restaurar el perfil');
+    }
+  })
+  .catch(error => {
+    console.error('Error al restaurar usuario:', error);
+    mostrarMensajeEnPagina(error.message || 'Error al restaurar el perfil', 'danger');
+    
+    // Restaurar botón
+    button.disabled = false;
+    button.textContent = 'Deshacer';
+    button.style.opacity = '1';
+  });
+
+
+}
+</script>
+{% endblock %} 

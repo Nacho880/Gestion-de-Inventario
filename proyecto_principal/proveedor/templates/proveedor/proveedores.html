@@ -1,0 +1,590 @@
+{% extends 'home/base_main.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Proveedores{% endblock %}
+
+{% block extra_styles %}
+<style>
+  /* Estilos para los selects de prefijos */
+  .prefijo-select {
+    font-size: 0.9rem;
+  }
+  
+  .prefijo-select option {
+    padding: 8px;
+  }
+  
+  /* Mejorar la apariencia del input personalizado */
+  .prefijo-custom {
+    transition: all 0.3s ease;
+  }
+  
+  .prefijo-custom:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  }
+  
+  /* Responsive para móviles */
+  @media (max-width: 768px) {
+    .prefijo-select {
+      font-size: 0.85rem;
+    }
+  }
+  
+  /* Asegurar que el modal se muestre correctamente */
+  .modal.show {
+    display: block !important;
+    z-index: 1055 !important;
+  }
+  
+  .modal-backdrop.show {
+    opacity: 0.5 !important;
+    z-index: 1050 !important;
+  }
+  
+  /* Forzar visibilidad del modal */
+  #editProveedorModal.show {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  /* Asegurar que el modal esté por encima de todo */
+  #editProveedorModal {
+    z-index: 1055 !important;
+  }
+  
+  /* Forzar que el modal se muestre incluso si hay problemas */
+  #editProveedorModal.modal.show {
+    display: block !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 1055 !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+  }
+  
+  /* Forzar visibilidad del modal cuando tiene la clase show */
+  #editProveedorModal.show {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 1055 !important;
+    padding: 0 !important;
+    overflow: auto !important;
+  }
+  
+  /* Asegurar que el modal-dialog sea visible */
+  #editProveedorModal.show .modal-dialog {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: calc(100% - 1rem) !important;
+    max-width: 800px !important; /* Tamaño modal-lg */
+    margin: 0.5rem auto !important;
+    pointer-events: none !important;
+  }
+  
+  /* Asegurar que el modal-content sea visible */
+  #editProveedorModal.show .modal-content {
+    pointer-events: auto !important;
+    background-color: #fff !important;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  /* Asegurar que el contenido del modal sea visible */
+  #editProveedorModal .modal-dialog {
+    z-index: 1056 !important;
+    position: relative !important;
+  }
+
+.modal-alert {
+  text-align: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  display: block !important;
+  float: none !important;
+  clear: both !important;
+}
+
+.modal-footer .modal-alert {
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  margin-bottom: 1.5rem !important;
+  margin-top: 0 !important;
+  max-width: 420px !important;
+  width: 100% !important;
+  text-align: center !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 24px 0 rgba(0,0,0,0.07) !important;
+  padding: 18px 24px !important;
+  font-size: 1.08rem !important;
+  background: #fff6f6 !important;
+}
+
+/* Estilos para mensajes de error de teléfono */
+.telefono-error {
+  font-size: 0.875rem !important;
+  color: #dc3545 !important;
+  margin-top: 0.25rem !important;
+  font-weight: 500 !important;
+}
+
+/* Borde rojo para campos con error */
+.form-control.is-invalid {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+/* Transición suave para los bordes */
+.form-control {
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+  #addProveedorModal.show .messages,
+  #addProveedorModal.show .alert,
+  #addProveedorModal.show .modal-alert,
+  #editProveedorModal.show .messages,
+  #editProveedorModal.show .alert,
+  #editProveedorModal.show .modal-alert {
+    display: none !important;
+  }
+
+.modal .alert:not(.telefono-error),
+.modal .messages {
+  display: none !important;
+}
+
+#addProveedorModal .alert:not(.telefono-error),
+#addProveedorModal .messages,
+#editProveedorModal .alert:not(.telefono-error),
+#editProveedorModal .messages {
+  display: none !important;
+}
+
+body.modal-open .alert:not(.telefono-error),
+body.modal-open .messages {
+  display: none !important;
+}
+
+  /* Ancho fijo para la columna de acciones */
+  #tablaProveedores th:last-child,
+  #tablaProveedores td:last-child {
+    width: 150px !important;
+    min-width: 150px !important;
+    max-width: 150px !important;
+  }
+
+  /* Compactar botones de acción solo en proveedores (igual que en categorías) */
+  #tablaProveedores .btn-group .btn {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    border-radius: 0 !important;
+  }
+  #tablaProveedores .btn-group .btn:first-child {
+    border-top-left-radius: 0.5rem !important;
+    border-bottom-left-radius: 0.5rem !important;
+  }
+  #tablaProveedores .btn-group .btn:last-child {
+    border-top-right-radius: 0.5rem !important;
+    border-bottom-right-radius: 0.5rem !important;
+  }
+  
+  /* Anular cualquier regla global que pueda estar afectando */
+  #tablaProveedores .btn-group {
+    gap: 0 !important;
+    margin: 0 !important;
+  }
+  
+  #tablaProveedores .btn-group .btn {
+    flex: none !important;
+    width: auto !important;
+    min-width: auto !important;
+    margin: 0 !important;
+  }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="fw-bold mb-0 mt-6 mb-2">Proveedores</h1>
+
+<div class="action-bar d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <button
+      type="button"
+      class="btn btn-primary"
+      id="addProveedorBtn"
+      data-bs-toggle="modal"
+      data-bs-target="#addProveedorModal"
+      title="Agregar proveedor"
+    >
+      <i class="bi bi-plus-circle"></i>
+    </button>
+
+    <input
+      type="text"
+      class="form-control"
+      placeholder="Buscar proveedor..."
+      id="searchProveedores"
+      style="max-width: 300px;"
+    />
+  </div>
+</div>
+
+{% if proveedores %}
+<div class="card shadow-lg border-0 mb-4">
+  <div class="card-header bg-gradient text-white fw-bold" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);">
+    <i class="bi bi-truck me-2"></i>Lista de Proveedores
+  </div>
+  <div class="card-body px-4 py-4">
+    <div class="table-responsive">
+      <table id="tablaProveedores" class="table datatable table-bordered table-striped table-hover align-middle text-center" style="width: 100%;">
+    <thead class="table-dark">
+      <tr>
+        <th class="text-center">Nombre</th>
+        <th class="text-center">Teléfono</th>
+        <th class="text-center">Correo</th>
+        <th class="text-center">Dirección</th>
+        <th class="text-center">País</th>
+        <th class="text-center">Ciudad</th>
+        <th class="text-center">Comuna</th>
+        <th class="text-center">Acciones</th>
+      </tr>
+    </thead>
+    <tbody id="tablaProveedoresBody">
+      {% for proveedor in proveedores %}
+      <tr>
+        <td class="align-middle">
+          {% if proveedor.nombre %}
+            {{ proveedor.nombre }}
+          {% else %}
+            <span class="text-muted fst-italic">Sin nombre</span>
+          {% endif %}
+        </td>
+        <td class="align-middle">
+          {% if proveedor.telefono %}
+            {{ proveedor.telefono_completo }}
+          {% else %}
+            <span class="text-muted fst-italic">Sin teléfono</span>
+          {% endif %}
+        </td>
+        <td class="align-middle">
+          {% if proveedor.correo %}
+            {{ proveedor.correo }}
+          {% else %}
+            <span class="text-muted fst-italic">Sin correo</span>
+          {% endif %}
+        </td>
+        <td class="align-middle">
+          {% if proveedor.direccion %}
+            {{ proveedor.direccion }}
+          {% else %}
+            <span class="text-muted fst-italic">Sin dirección</span>
+          {% endif %}
+        </td>
+        <td class="align-middle">
+          {% if proveedor.pais %}
+            {{ proveedor.pais }}
+          {% else %}
+            <span class="text-muted fst-italic">Sin país</span>
+          {% endif %}
+        </td>
+        <td class="align-middle">
+          {% if proveedor.ciudad %}
+            {{ proveedor.ciudad }}
+          {% else %}
+            <span class="text-muted fst-italic">Sin ciudad</span>
+          {% endif %}
+        </td>
+        <td class="align-middle">
+          {% if proveedor.comuna %}
+            {{ proveedor.comuna }}
+          {% else %}
+            <span class="text-muted fst-italic">Sin comuna</span>
+          {% endif %}
+        </td>
+        <td class="align-middle">
+          <div class="btn-group">
+            <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editProveedorModal" 
+              data-id="{{ proveedor.id_proveedor }}" data-nombre="{{ proveedor.nombre|escapejs }}" 
+              data-prefijo-telefono="{{ proveedor.prefijo_telefono|default:'+56' }}" data-telefono="{{ proveedor.telefono|default:'' }}" 
+              data-correo="{{ proveedor.correo|default:'' }}" data-direccion="{{ proveedor.direccion|default:'' }}" 
+              data-pais="{{ proveedor.pais|default:'' }}" data-ciudad="{{ proveedor.ciudad|default:'' }}" 
+              data-comuna="{{ proveedor.comuna|default:'' }}" title="Editar proveedor">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <a href="{% url 'proveedor_producto' proveedor.id_proveedor %}" class="btn btn-info btn-sm" title="Ver productos">
+              <i class="bi bi-box-seam"></i>
+            </a>
+            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteProveedorModal" 
+              data-id="{{ proveedor.id_proveedor }}" data-nombre="{{ proveedor.nombre|escapejs }}" title="Eliminar proveedor">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  </div>
+</div>
+{% else %}
+  <div class="card shadow-lg border-0">
+    <div class="card-body text-center px-4 py-4">
+      <div class="alert alert-info mb-0">No hay proveedores registrados.</div>
+    </div>
+  </div>
+{% endif %}
+
+
+<!-- Modal Agregar Proveedor -->
+<div class="modal fade" id="addProveedorModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <form method="post" action="{% url 'agregar_proveedor' %}" id="addProveedorForm">
+        {% csrf_token %}
+        <div class="modal-header bg-primary text-white rounded-top-4">
+          <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i> Añadir Proveedor</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body px-4 py-3">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+            <label for="add-nombre" class="form-label fw-semibold">Nombre</label>
+            <input type="text" id="add-nombre" name="nombre" class="form-control rounded-pill px-3" required placeholder="Ej: Comercial ABC, Ferretería Central" />
+          </div>
+            <div class="col-md-6 mb-3">
+            <label for="add-correo" class="form-label fw-semibold">Correo</label>
+            <input type="email" id="add-correo" name="correo" class="form-control rounded-pill px-3" placeholder="Ej: contacto@proveedor.com" />
+          </div>
+          </div>
+          <div class="row">
+            <div class="col-md-3 mb-3">
+            <label for="add-prefijo-telefono" class="form-label fw-semibold">Prefijo</label>
+            <select id="add-prefijo-telefono" name="prefijo_telefono" class="form-control rounded-pill px-3 prefijo-select">
+              <option value="+56" selected>🇨🇱 +56 (Chile)</option>
+              <option value="+1">🇺🇸 +1 (Estados Unidos/Canadá)</option>
+              <option value="+52">🇲🇽 +52 (México)</option>
+              <option value="+57">🇨🇴 +57 (Colombia)</option>
+              <option value="+54">🇦🇷 +54 (Argentina)</option>
+              <option value="+51">🇵🇪 +51 (Perú)</option>
+              <option value="+58">🇻🇪 +58 (Venezuela)</option>
+              <option value="+593">🇪🇨 +593 (Ecuador)</option>
+              <option value="+591">🇧🇴 +591 (Bolivia)</option>
+              <option value="+595">🇵🇾 +595 (Paraguay)</option>
+              <option value="+598">🇺🇾 +598 (Uruguay)</option>
+              <option value="+34">🇪🇸 +34 (España)</option>
+              <option value="+33">🇫🇷 +33 (Francia)</option>
+              <option value="+49">🇩🇪 +49 (Alemania)</option>
+              <option value="+39">🇮🇹 +39 (Italia)</option>
+              <option value="+44">🇬🇧 +44 (Reino Unido)</option>
+              <option value="+81">🇯🇵 +81 (Japón)</option>
+              <option value="+86">🇨🇳 +86 (China)</option>
+              <option value="+91">🇮🇳 +91 (India)</option>
+              <option value="+55">🇧🇷 +55 (Brasil)</option>
+              <option value="custom">📝 Otro (personalizado)</option>
+            </select>
+            <input type="text" id="add-prefijo-custom" name="prefijo_telefono_custom" class="form-control rounded-pill px-3 mt-2 prefijo-custom" placeholder="+XX" style="display: none;" />
+          </div>
+            <div class="col-md-9 mb-3">
+            <label for="add-telefono" class="form-label fw-semibold">Teléfono</label>
+            <input type="text" id="add-telefono" name="telefono" class="form-control rounded-pill px-3" placeholder="Ej: 912345678 o 212345678" />
+          </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="add-direccion" class="form-label fw-semibold">Dirección</label>
+            <input type="text" id="add-direccion" name="direccion" class="form-control rounded-pill px-3" placeholder="Ej: Av. Principal 1234, Local 5" />
+          </div>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+            <label for="add-pais" class="form-label fw-semibold">País</label>
+            <input type="text" id="add-pais" name="pais" class="form-control rounded-pill px-3" placeholder="Ej: Chile" />
+          </div>
+            <div class="col-md-4 mb-3">
+            <label for="add-ciudad" class="form-label fw-semibold">Ciudad</label>
+            <input type="text" id="add-ciudad" name="ciudad" class="form-control rounded-pill px-3" placeholder="Ej: Santiago" />
+          </div>
+            <div class="col-md-4 mb-3">
+            <label for="add-comuna" class="form-label fw-semibold">Comuna</label>
+            <input type="text" id="add-comuna" name="comuna" class="form-control rounded-pill px-3" placeholder="Ej: Providencia" />
+          </div>
+        </div>
+        <div class="modal-footer px-4 pb-4">
+          <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">Guardar</button>
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Proveedor -->
+<div class="modal fade" id="editProveedorModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <form method="post" id="editProveedorForm">
+        {% csrf_token %}
+        <div class="modal-header bg-warning text-dark rounded-top-4">
+          <h5 class="modal-title fw-bold"><i class="bi bi-pencil me-2"></i> Editar Proveedor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body px-4 py-3">
+          <input type="hidden" name="id" id="edit-id" />
+          <div class="row">
+            <div class="col-md-6 mb-3">
+            <label for="edit-nombre" class="form-label fw-semibold">Nombre</label>
+            <input type="text" id="edit-nombre" name="nombre" class="form-control rounded-pill px-3" required />
+          </div>
+            <div class="col-md-6 mb-3">
+            <label for="edit-correo" class="form-label fw-semibold">Correo</label>
+            <input type="email" id="edit-correo" name="correo" class="form-control rounded-pill px-3" />
+          </div>
+          </div>
+          <div class="row">
+            <div class="col-md-3 mb-3">
+            <label for="edit-prefijo-telefono" class="form-label fw-semibold">Prefijo</label>
+            <select id="edit-prefijo-telefono" name="prefijo_telefono" class="form-control rounded-pill px-3 prefijo-select">
+              <option value="+56">🇨🇱 +56 (Chile)</option>
+              <option value="+1">🇺🇸 +1 (Estados Unidos/Canadá)</option>
+              <option value="+52">🇲🇽 +52 (México)</option>
+              <option value="+57">🇨🇴 +57 (Colombia)</option>
+              <option value="+54">🇦🇷 +54 (Argentina)</option>
+              <option value="+51">🇵🇪 +51 (Perú)</option>
+              <option value="+58">🇻🇪 +58 (Venezuela)</option>
+              <option value="+593">🇪🇨 +593 (Ecuador)</option>
+              <option value="+591">🇧🇴 +591 (Bolivia)</option>
+              <option value="+595">🇵🇾 +595 (Paraguay)</option>
+              <option value="+598">🇺🇾 +598 (Uruguay)</option>
+              <option value="+34">🇪🇸 +34 (España)</option>
+              <option value="+33">🇫🇷 +33 (Francia)</option>
+              <option value="+49">🇩🇪 +49 (Alemania)</option>
+              <option value="+39">🇮🇹 +39 (Italia)</option>
+              <option value="+44">🇬🇧 +44 (Reino Unido)</option>
+              <option value="+81">🇯🇵 +81 (Japón)</option>
+              <option value="+86">🇨🇳 +86 (China)</option>
+              <option value="+91">🇮🇳 +91 (India)</option>
+              <option value="+55">🇧🇷 +55 (Brasil)</option>
+              <option value="custom">📝 Otro (personalizado)</option>
+            </select>
+            <input type="text" id="edit-prefijo-custom" name="prefijo_telefono_custom" class="form-control rounded-pill px-3 mt-2 prefijo-custom" placeholder="+XX" style="display: none;" />
+          </div>
+            <div class="col-md-9 mb-3">
+            <label for="edit-telefono" class="form-label fw-semibold">Teléfono</label>
+            <input type="text" id="edit-telefono" name="telefono" class="form-control rounded-pill px-3" placeholder="912345678 o 212345678" />
+          </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="edit-direccion" class="form-label fw-semibold">Dirección</label>
+            <input type="text" id="edit-direccion" name="direccion" class="form-control rounded-pill px-3" />
+          </div>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+            <label for="edit-pais" class="form-label fw-semibold">País</label>
+            <input type="text" id="edit-pais" name="pais" class="form-control rounded-pill px-3" />
+          </div>
+            <div class="col-md-4 mb-3">
+            <label for="edit-ciudad" class="form-label fw-semibold">Ciudad</label>
+            <input type="text" id="edit-ciudad" name="ciudad" class="form-control rounded-pill px-3" />
+          </div>
+            <div class="col-md-4 mb-3">
+            <label for="edit-comuna" class="form-label fw-semibold">Comuna</label>
+            <input type="text" id="edit-comuna" name="comuna" class="form-control rounded-pill px-3" />
+          </div>
+        </div>
+        <div class="modal-footer px-4 pb-4">
+          <button type="submit" class="btn btn-warning rounded-pill px-4 fw-semibold">Guardar</button>
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Eliminar Proveedor -->
+<div class="modal fade" id="deleteProveedorModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <form method="post" id="deleteProveedorForm">
+        {% csrf_token %}
+        <div class="modal-header bg-danger text-white rounded-top-4">
+          <h5 class="modal-title fw-bold"><i class="bi bi-trash me-2"></i> Confirmar Eliminación</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body px-4 py-3">
+          <input type="hidden" name="id" id="delete-id" />
+          <p>¿Está seguro que desea eliminar el proveedor <strong id="delete-nombre"></strong>?</p>
+        </div>
+        <div class="modal-footer px-4 pb-4">
+          <button type="submit" class="btn btn-danger rounded-pill px-4 fw-semibold">Eliminar</button>
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.card-header.bg-gradient {
+  background: #fff !important;
+  color: #222 !important;
+  font-weight: 600;
+  font-size: 1.08rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+  border-bottom: 1.5px solid #e5e7eb;
+  letter-spacing: 0.01em;
+  box-shadow: none;
+}
+
+.proveedor-modal-alert,
+.modal-error.proveedor-modal-alert,
+.alert.proveedor-modal-alert {
+  max-width: 85% !important;
+  width: auto !important;
+  margin: 0 auto 15px auto !important;
+  padding: 12px 20px !important;
+  border-radius: 8px !important;
+  font-size: 0.95rem !important;
+  text-align: center !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+  display: block !important;
+  float: none !important;
+  clear: both !important;
+}
+
+/* Forzar que los mensajes de error en modales de proveedor no ocupen todo el ancho */
+#addProveedorModal .modal-error,
+#editProveedorModal .modal-error {
+  max-width: 85% !important;
+  width: auto !important;
+  margin: 0 auto 15px auto !important;
+  text-align: center !important;
+}
+
+/* Asegurar que los modales estén por encima del sidebar (z-index: 1060) */
+.modal {
+  z-index: 9999 !important;
+}
+
+.modal-backdrop {
+  z-index: 9998 !important;
+}
+</style>
+<script src="{% static 'proveedor/js/proveedores.js' %}"></script>
+{% endblock %}
+

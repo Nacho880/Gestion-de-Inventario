@@ -1,0 +1,1393 @@
+{% extends 'home/base_main.html' %}
+{% load humanize %}
+{% block title %}Reembolsos{% endblock %}
+{% block content %}
+<div class="compra-main">
+  <!-- Header con título y botones -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="fw-bold mb-0 mt-6 mb-2">Reembolsos realizados</h1>
+    <div class="d-flex gap-2">
+      <a href="{% url 'exportar_reembolsos_pdf' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-danger">
+        <i class="bi bi-file-earmark-pdf me-2"></i>Exportar PDF
+      </a>
+      <a href="{% url 'ventas' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Volver a ventas
+      </a>
+    </div>
+  </div>
+
+  <!-- Filtros en card -->
+  <div class="card shadow-lg border-0 mb-4">
+    <div class="card-header bg-gradient text-white fw-bold">
+      <i class="bi bi-funnel me-2"></i>Filtros de búsqueda
+    </div>
+    <div class="card-body px-4 py-4">
+      <form method="get" class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Desde</label>
+          <input type="date" name="fecha_inicio" class="form-control rounded-pill" value="{% if filtros.fecha_inicio and filtros.fecha_inicio != 'None' %}{{ filtros.fecha_inicio }}{% endif %}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Hasta</label>
+          <input type="date" name="fecha_fin" class="form-control rounded-pill" value="{% if filtros.fecha_fin and filtros.fecha_fin != 'None' %}{{ filtros.fecha_fin }}{% endif %}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Número de Venta</label>
+          <input type="text" name="venta" class="form-control rounded-pill" value="{% if filtros.venta_id and filtros.venta_id != 'None' %}{{ filtros.venta_id }}{% endif %}" placeholder="Ej: 123">
+        </div>
+        <div class="col-md-2 d-flex align-items-end gap-2">
+          <button type="submit" class="btn btn-primary btn-sm w-100">
+            <i class="bi bi-search"></i>
+          </button>
+          <a href="{% url 'listar_reembolsos' %}" class="btn btn-secondary btn-sm w-100" title="Limpiar filtros">
+            <i class="bi bi-arrow-clockwise"></i>
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Lista de reembolsos en acordeón -->
+  <div class="card shadow-lg border-0 mb-4">
+    <div class="card-header bg-gradient text-white fw-bold">
+      <i class="bi bi-arrow-return-left me-2"></i>Historial de Reembolsos
+    </div>
+    <div class="card-body px-4 py-4">
+      {% if reembolsos %}
+        <div class="accordion" id="reembolsosAccordion">
+          {% for reembolso in reembolsos %}
+          <div class="accordion-item mb-2">
+            <h2 class="accordion-header" id="heading{{ reembolso.id_reembolso }}">
+              <div class="d-flex align-items-center justify-content-between w-100">
+                <button class="accordion-button collapsed flex-grow-1 d-flex align-items-center justify-content-between gap-4" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ reembolso.id_reembolso }}" aria-expanded="false" aria-controls="collapse{{ reembolso.id_reembolso }}">
+                  <span class="fw-bold" style="min-width: 170px;"><i class="bi bi-arrow-return-left"></i>Reembolso #{{ reembolso.numero_reembolso|default:reembolso.id_reembolso }}</span>
+                  <span style="min-width: 120px;"><i class="bi bi-calendar3"></i> {{ reembolso.fecha_hora|date:'d/m/Y' }}</span>
+                  <span style="min-width: 140px;"><i class="bi bi-cash-coin"></i> ${{ reembolso.total_devuelto|floatformat:0|intcomma }}</span>
+                  <span style="min-width: 130px;">
+                    <span class="badge badge-estado {% if reembolso.venta.estado == 'COMPLETADA' %}bg-success{% elif reembolso.venta.estado == 'PARCIALMENTE_REEMBOLSADA' %}bg-warning{% elif reembolso.venta.estado == 'REEMBOLSADA' %}bg-danger{% elif reembolso.venta.estado == 'ANULADA' %}bg-secondary{% else %}bg-secondary{% endif %}">
+                      {% if reembolso.venta.estado == 'COMPLETADA' %}COMPLETADA{% elif reembolso.venta.estado == 'PARCIALMENTE_REEMBOLSADA' %}PARCIALMENTE REEMBOLSADA{% elif reembolso.venta.estado == 'REEMBOLSADA' %}REEMBOLSADA{% elif reembolso.venta.estado == 'ANULADA' %}ANULADA{% else %}{{ reembolso.venta.estado|upper }}{% endif %}
+                    </span>
+                  </span>
+                </button>
+                <div class="btn-group me-4">
+                  <button 
+                    type="button" 
+                    class="btn btn-danger btn-sm" 
+                    title="Cancelar reembolso" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#cancelarReembolsoModal" 
+                    data-id="{{ reembolso.id_reembolso }}" 
+                    data-venta="{{ reembolso.venta.numero_venta|default:reembolso.venta.id_venta }}" 
+                    data-numero="{{ reembolso.numero_reembolso|default:reembolso.id_reembolso }}"
+                  >
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                </div>
+              </div>
+            </h2>
+            <div id="collapse{{ reembolso.id_reembolso }}" class="accordion-collapse collapse" aria-labelledby="heading{{ reembolso.id_reembolso }}" data-bs-parent=".accordion">
+              <div class="accordion-body px-4 py-4">
+                <div class="row">
+                  <div class="col-md-8 col-12 mb-2">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-box-seam me-2"></i>Productos reembolsados</h6>
+                    <div class="table-responsive">
+                      <table class="table table-bordered align-middle text-center mb-0">
+                        <thead class="table-light">
+                          <tr>
+                            <th>Producto</th>
+                            <th>Código SKU</th>
+                            <th>Cantidad</th>
+                            <th>Precio unitario</th>
+                            <th>Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for det in reembolso.detalles.all %}
+                          <tr>
+                            <td>
+                              {% if det.producto.nombre and det.producto.nombre != '---' and det.producto.nombre != '—' and det.producto.nombre != '' %}
+                                {{ det.producto.nombre }}
+                              {% else %}
+                                <span class="text-muted fst-italic">Sin nombre</span>
+                              {% endif %}
+                            </td>
+                            <td>
+                              {% with cod=det.producto.codigo_set.first %}
+                                {% if cod %}{{ cod.codigo }}{% else %}<span class="text-muted fst-italic">Sin código</span>{% endif %}
+                              {% endwith %}
+                            </td>
+                            <td><span class="badge bg-secondary">{{ det.cantidad }} unid.</span></td>
+                            <td>${{ det.producto.precio_unitario|floatformat:0|intcomma }}</td>
+                            <td>${{ det.monto|floatformat:0|intcomma }}</td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <th colspan="4" class="text-end">Total reembolso:</th>
+                            <th>${{ reembolso.total_devuelto|floatformat:0|intcomma }}</th>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                  <div class="col-md-4 col-12">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-info-circle me-2"></i>Información del reembolso</h6>
+                    <div class="card bg-light">
+                      <div class="card-body px-4 py-3">
+                        <div class="mb-3">
+                          <strong>Venta original:</strong><br>
+                          <a href="{% url 'editar_venta' reembolso.venta.id_venta %}" class="text-decoration-none">
+                            <i class="bi bi-receipt me-1"></i>Venta #{{ reembolso.venta.numero_venta|default:reembolso.venta.id_venta }}
+                          </a>
+                        </div>
+                        <div class="mb-3">
+                          <strong>Fecha de reembolso:</strong><br>
+                          <i class="bi bi-calendar3 me-1"></i>{{ reembolso.fecha_hora|date:'d/m/Y H:i' }}
+                        </div>
+                        <div class="mb-3">
+                          <strong>Usuario:</strong><br>
+                          <i class="bi bi-person me-1"></i>
+                          {% if reembolso.usuario.nombre_usuario and reembolso.usuario.nombre_usuario != '---' and reembolso.usuario.nombre_usuario != '—' and reembolso.usuario.nombre_usuario != '' %}
+                            {{ reembolso.usuario.nombre_usuario }}
+                          {% else %}
+                            <span class="text-muted fst-italic">Sin usuario</span>
+                          {% endif %}
+                        </div>
+                        <div class="mb-3">
+                          <strong>Estado de la venta:</strong><br>
+                          <span class="badge 
+                            {% if reembolso.venta.estado == 'COMPLETADA' %}bg-success
+                            {% elif reembolso.venta.estado == 'PARCIALMENTE_REEMBOLSADA' %}bg-warning
+                            {% elif reembolso.venta.estado == 'REEMBOLSADA' %}bg-danger
+                            {% elif reembolso.venta.estado == 'ANULADA' %}bg-secondary
+                            {% else %}bg-secondary{% endif %}">
+                            {% if reembolso.venta.estado == 'COMPLETADA' %}COMPLETADA
+                            {% elif reembolso.venta.estado == 'PARCIALMENTE_REEMBOLSADA' %}PARCIALMENTE REEMBOLSADA
+                            {% elif reembolso.venta.estado == 'REEMBOLSADA' %}REEMBOLSADA
+                            {% elif reembolso.venta.estado == 'ANULADA' %}ANULADA
+                            {% else %}{{ reembolso.venta.estado|upper }}{% endif %}
+                          </span>
+                        </div>
+                        <div class="mb-0">
+                          <strong>Observaciones:</strong><br>
+                          <small class="text-muted">
+                            {% if reembolso.observaciones and reembolso.observaciones != '---' and reembolso.observaciones != '—' and reembolso.observaciones != '' %}
+                              {{ reembolso.observaciones }}
+                            {% else %}
+                              Sin observaciones
+                            {% endif %}
+                          </small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="alert alert-info mb-0">No hay reembolsos registrados.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Resumen total -->
+  {% if reembolsos %}
+    <div class="card shadow-lg border-0">
+      <div class="card-body text-center px-4 py-4">
+        <h5 class="fw-bold text-success mb-0">
+          <i class="bi bi-cash-stack me-2"></i>
+          Total reembolsado: ${{ total_reembolsado|floatformat:0|intcomma }}
+        </h5>
+      </div>
+    </div>
+  {% endif %}
+
+<!-- Modal Cancelar Reembolso -->
+<div class="modal fade" id="cancelarReembolsoModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <form method="post" id="cancelarReembolsoForm">
+        {% csrf_token %}
+        <div class="modal-header bg-danger text-white rounded-top-4">
+          <h5 class="modal-title fw-bold"><i class="bi bi-x-circle me-2"></i> Confirmar Cancelación</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body px-4 py-3">
+          <input type="hidden" name="id" id="cancelar-id" />
+          <p>¿Está seguro que desea cancelar el reembolso <strong id="cancelar-reembolso"></strong>?</p>
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Nota:</strong> Al cancelar el reembolso, las cantidades serán devueltas automáticamente a la venta original #<span id="cancelar-venta"></span>.
+          </div>
+        </div>
+        <div class="modal-footer px-4 pb-4">
+          <button type="submit" class="btn btn-danger rounded-pill px-4 fw-semibold">Cancelar Reembolso</button>
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">No Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.card-header.bg-gradient {
+  background: #fff !important;
+  color: #222 !important;
+  font-weight: 600;
+  font-size: 1.08rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+  border-bottom: 1.5px solid #e5e7eb;
+  letter-spacing: 0.01em;
+  box-shadow: none;
+}
+</style>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Mejora visual para los registros de reembolsos (igual que ventas) */
+.accordion-item {
+  border-radius: 18px !important;
+  box-shadow: 0 2px 10px 0 rgba(106,17,203,0.07), 0 1.5px 4px 0 rgba(37,117,252,0.06);
+  margin-bottom: 12px;
+  border: none;
+  overflow: hidden;
+  background: #f8fafd;
+  transition: box-shadow 0.2s, background 0.2s;
+}
+.accordion-item:nth-child(even) {
+  background: #f3f6fb;
+}
+.accordion-item:hover {
+  box-shadow: 0 4px 18px 0 rgba(106,17,203,0.13), 0 2.5px 8px 0 rgba(37,117,252,0.10);
+  background: #eef3fa;
+}
+.accordion-button {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #2d2d2d;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 1.1rem 1.5rem;
+  transition: background 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+.accordion-button:not(.collapsed) {
+  background: linear-gradient(90deg, #6a11cb11 0%, #2575fc11 100%);
+  color: #6a11cb;
+}
+.accordion-header {
+  border-bottom: 1px solid #e0e7ef;
+}
+
+/* Remarcar el número de reembolso */
+.accordion-button .fw-bold {
+  color: #6a11cb;
+  font-size: 1.18rem;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+}
+.accordion-button .bi-arrow-return-left {
+  font-size: 1.3rem;
+  margin-right: 0.5rem;
+  color: #2575fc;
+}
+
+/* Observaciones separadas visualmente */
+.accordion-button .obs-label {
+  color: #888;
+  font-weight: 500;
+  margin-left: 1.5rem;
+  font-size: 1rem;
+  border-left: 2px solid #e0e7ef;
+  padding-left: 1rem;
+}
+
+/* Mejorar la tabla de detalles */
+.accordion-body .table {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px 0 rgba(106,17,203,0.06);
+}
+
+/* Animación suave al expandir/cerrar */
+.accordion-collapse {
+  transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* Responsive para móviles */
+@media (max-width: 600px) {
+  .accordion-item,
+  .accordion-header .d-flex,
+  .accordion-button {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  .accordion-button {
+    flex-wrap: wrap !important;
+    word-break: break-word !important;
+  }
+  .accordion-body {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .accordion-body .table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: #cbd5e0 #f7fafc !important;
+  }
+  .accordion-body .table {
+    min-width: 600px !important;
+    max-width: 800px !important;
+    width: 100% !important;
+    font-size: 0.9rem !important;
+    table-layout: fixed !important;
+    overflow-x: auto !important;
+  }
+  .accordion-body .table th,
+  .accordion-body .table td {
+    word-break: break-word !important;
+    white-space: normal !important;
+    font-size: 0.85rem !important;
+    padding: 0.3rem 0.2rem !important;
+  }
+  .accordion-body,
+  .accordion-collapse,
+  .accordion-item {
+    overflow: visible !important;
+  }
+}
+@media (max-width: 480px) {
+  .compra-main .accordion .table {
+    font-size: 0.7rem;
+    width: 100%;
+    table-layout: fixed;
+    min-width: 450px;
+  }
+  .compra-main .accordion .table th,
+  .compra-main .accordion .table td {
+    padding: 0.2rem 0.1rem;
+    font-size: 0.65rem;
+    word-break: break-word;
+    white-space: normal;
+  }
+  .compra-main .accordion .table-responsive {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .compra-main .accordion .accordion-body {
+    padding: 0.3rem;
+  }
+  .compra-main .accordion .row {
+    margin: 0;
+  }
+  .compra-main .accordion .col-md-8,
+  .compra-main .accordion .col-md-4 {
+    padding: 0.3rem;
+  }
+}
+
+/* Mejorar distribución de información en el acordeón de reembolsos */
+.accordion-button span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accordion-button .obs-label {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Asegurar que el botón de cancelar sea visible */
+.accordion-header .btn-group {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100%;
+  margin: 0 auto !important;
+  float: none !important;
+}
+@media (max-width: 600px) {
+  .accordion-header .btn-group {
+    width: 100% !important;
+    margin: 0 auto !important;
+    float: none !important;
+  }
+}
+
+/* Limitar ancho y centrar barra de reembolsos igual que ventas */
+#reembolsosAccordion {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px; /* Espacio para la barra de scroll */
+}
+
+/* Ancho fijo para los badges de estado en acordeones */
+.badge-estado {
+  min-width: 130px;
+  text-align: center;
+  display: inline-block;
+}
+
+/* Estilos para pantallas grandes igual que ventas */
+@media (min-width: 601px) {
+  .accordion-button {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 1.2rem !important;
+  }
+  
+  .accordion-header .btn-group {
+    width: auto !important;
+    margin-right: 1.5rem !important;
+  }
+}
+
+/* En móvil, eliminar min-width para evitar desbordes */
+@media (max-width: 600px) {
+  .accordion-item,
+  .accordion-header .d-flex,
+  .accordion-button {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  
+  .accordion-button {
+    flex-wrap: wrap !important;
+    word-break: break-word !important;
+  }
+  
+  .accordion-body {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  
+  /* SOBRESCRIBIR REGLAS GLOBALES QUE INTERFIEREN */
+  .accordion-body .table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: -16px !important;
+    margin-right: -16px !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+  
+  /* Forzar scroll horizontal en tablas */
+  .accordion-body .table {
+    min-width: 600px !important;
+    width: 100% !important;
+    font-size: 0.9rem !important;
+    table-layout: fixed !important;
+    overflow-x: auto !important;
+  }
+  
+  .accordion-body .table th,
+  .accordion-body .table td {
+    word-break: break-word !important;
+    white-space: normal !important;
+    font-size: 0.85rem !important;
+    padding: 0.3rem 0.2rem !important;
+  }
+  
+  /* Eliminar cualquier overflow hidden que pueda estar interfiriendo */
+  .accordion-body,
+  .accordion-collapse,
+  .accordion-item {
+    overflow: visible !important;
+  }
+}
+
+/* Indicador visual de scroll horizontal */
+#reembolsosAccordion::after {
+  display: none !important;
+  content: none !important;
+  background: none !important;
+  opacity: 0 !important;
+}
+
+/* Mostrar indicador solo cuando hay scroll - DESHABILITADO */
+#reembolsosAccordion.has-scroll::after {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+/* Contenedor principal de reembolsos con scroll horizontal automático */
+.compra-main {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0 auto;
+  padding: 0;
+}
+@media (max-width: 480px) {
+  .compra-main .accordion .table {
+    font-size: 0.7rem;
+    width: 100%;
+    table-layout: fixed;
+    min-width: 450px;
+  }
+  .compra-main .accordion .table th,
+  .compra-main .accordion .table td {
+    padding: 0.2rem 0.1rem;
+    font-size: 0.65rem;
+    word-break: break-word;
+    white-space: normal;
+  }
+  .compra-main .accordion .table-responsive {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .compra-main .accordion .accordion-body {
+    padding: 0.3rem;
+  }
+  .compra-main .accordion .row {
+    margin: 0;
+  }
+  .compra-main .accordion .col-md-8,
+  .compra-main .accordion .col-md-4 {
+    padding: 0.3rem;
+  }
+}
+
+/* Refuerzo para acordeón y tabla igual que compras */
+.compra-main .accordion {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+}
+/* Estas reglas ya están definidas arriba con media queries correctas */
+@media (max-width: 600px) {
+  .accordion-item,
+  .accordion-header .d-flex,
+  .accordion-button {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  .accordion-button {
+    flex-wrap: wrap !important;
+    word-break: break-word !important;
+  }
+  .accordion-body {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .accordion-body .table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: #cbd5e0 #f7fafc !important;
+  }
+  .accordion-body .table {
+    min-width: 600px !important;
+    max-width: 800px !important;
+    width: 100% !important;
+    font-size: 0.9rem !important;
+    table-layout: fixed !important;
+    overflow-x: auto !important;
+  }
+  .accordion-body .table th,
+  .accordion-body .table td {
+    word-break: break-word !important;
+    white-space: normal !important;
+    font-size: 0.85rem !important;
+    padding: 0.3rem 0.2rem !important;
+  }
+  .accordion-body,
+  .accordion-collapse,
+  .accordion-item {
+    overflow: visible !important;
+  }
+}
+@media (max-width: 480px) {
+  .compra-main .accordion .table {
+    font-size: 0.7rem;
+    width: 100%;
+    table-layout: fixed;
+    min-width: 450px;
+  }
+  .compra-main .accordion .table th,
+  .compra-main .accordion .table td {
+    padding: 0.2rem 0.1rem;
+    font-size: 0.65rem;
+    word-break: break-word;
+    white-space: normal;
+  }
+  .compra-main .accordion .table-responsive {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .compra-main .accordion .accordion-body {
+    padding: 0.3rem;
+  }
+  .compra-main .accordion .row {
+    margin: 0;
+  }
+  .compra-main .accordion .col-md-8,
+  .compra-main .accordion .col-md-4 {
+    padding: 0.3rem;
+  }
+}
+
+/* Responsive para móviles igual que ventas */
+@media (max-width: 600px) {
+  .accordion-button {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+    font-size: 1rem;
+    padding: 0.8rem 0.7rem;
+  }
+  .accordion-button span {
+    min-width: auto !important;
+    margin-right: 0.5rem !important;
+  }
+  /* Cambios para los botones de acción */
+  .accordion-header > .d-flex {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+  .accordion-header .btn-group {
+    width: 100%;
+    justify-content: flex-start !important;
+    margin-top: 0.5rem;
+  }
+}
+
+/* Anular reglas móviles en pantallas grandes */
+@media (min-width: 601px) {
+  .accordion-header > .d-flex {
+    flex-direction: row !important;
+    align-items: center !important;
+  }
+  
+  .accordion-header .btn-group {
+    justify-content: flex-end !important;
+    width: auto !important;
+    margin-top: 0 !important;
+    margin-right: 1.5rem !important;
+  }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Función para mostrar mensaje con botón deshacer (igual que en ventas)
+function mostrarMensajeConDeshacer(mensaje, reembolsoId) {
+  console.log('Mostrando mensaje con deshacer:', mensaje, reembolsoId);
+  
+  // Crear el contenedor de notificaciones si no existe
+  let notificationContainer = document.getElementById('notification-container');
+  if (!notificationContainer) {
+    notificationContainer = document.createElement('div');
+    notificationContainer.id = 'notification-container';
+    notificationContainer.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 350px;
+    `;
+    document.body.appendChild(notificationContainer);
+  }
+  
+  // Crear la notificación con botón deshacer
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  notification.style.cssText = `
+    background: #dc3545;
+    color: white;
+    padding: 16px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateX(400px);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    position: relative;
+    overflow: hidden;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+  `;
+  
+  // Agregar barra de progreso
+  const progressBar = document.createElement('div');
+  progressBar.style.cssText = `
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.3);
+    width: 100%;
+    transform: scaleX(1);
+    transform-origin: left;
+    transition: transform 10s linear;
+  `;
+  
+  notification.appendChild(progressBar);
+  
+  // Contenido de la notificación con botón deshacer
+  notification.innerHTML += `
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="flex: 1;">
+        <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px; text-align: center;">
+          ${mensaje}
+        </div>
+        <div style="text-align: center;">
+          <button id="btnDeshacerEliminacion" 
+                  onclick="restaurarReembolso(${reembolsoId}, this)" 
+                  style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: all 0.2s; font-weight: 500;">
+            Deshacer
+          </button>
+        </div>
+      </div>
+      <button onclick="this.parentElement.parentElement.remove()" 
+              style="background: none; border: none; color: white; font-size: 18px; cursor: pointer; padding: 0; margin-left: 12px; opacity: 0.7; transition: opacity 0.2s;">
+        ×
+      </button>
+    </div>
+  `;
+  
+  // Agregar la notificación al contenedor
+  notificationContainer.appendChild(notification);
+  
+  // Animar entrada
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)';
+  }, 10);
+  
+  // Animar barra de progreso
+  setTimeout(() => {
+    progressBar.style.transform = 'scaleX(0)';
+  }, 100);
+  
+  // Auto-remover después de 10 segundos
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.style.transform = 'translateX(400px)';
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.remove();
+        }
+      }, 300);
+    }
+  }, 10000);
+  
+  // Efecto hover
+  notification.addEventListener('mouseenter', () => {
+    notification.style.transform = 'translateX(0) scale(1.02)';
+    progressBar.style.transition = 'none';
+  });
+  
+  notification.addEventListener('mouseleave', () => {
+    notification.style.transform = 'translateX(0) scale(1)';
+    progressBar.style.transition = 'transform 10s linear';
+  });
+}
+
+// Función para restaurar reembolso
+function restaurarReembolso(reembolsoId, button) {
+  console.log('Restaurando reembolso:', reembolsoId);
+  
+  // Deshabilitar botón
+  button.disabled = true;
+  button.textContent = 'Restaurando...';
+  button.style.opacity = '0.7';
+  
+  // Enviar petición para restaurar
+  fetch(`/ventas/reembolsos/restaurar/${reembolsoId}/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Mostrar mensaje de éxito
+      mostrarMensajeEnPagina(data.message, 'success');
+      
+      // Agregar el reembolso restaurado a la tabla dinámicamente
+      if (data.reembolso_data) {
+        agregarReembolsoATabla(data.reembolso_data, data.venta_estado);
+      }
+      
+      // Marcar en localStorage que se restauró un reembolso para esta venta
+      if (data.venta_estado) {
+        const ventaId = data.reembolso_data ? data.reembolso_data.venta_id : null;
+        if (ventaId) {
+          console.log('Marcando reembolso restaurado para venta:', ventaId);
+          localStorage.setItem(`reembolso_restaurado_${ventaId}`, Date.now().toString());
+          
+          // Usar BroadcastChannel para comunicación entre pestañas
+          try {
+            const channel = new BroadcastChannel('reembolso_updates');
+            channel.postMessage({
+              venta_id: ventaId,
+              action: 'restaurado',
+              venta_estado: data.venta_estado,
+              reembolso_id: data.reembolso_id
+            });
+            channel.close();
+          } catch (e) {
+            console.log('BroadcastChannel no disponible, usando eventos alternativos');
+          }
+          
+          // Disparar evento personalizado para comunicación entre pestañas (respaldo)
+          window.dispatchEvent(new CustomEvent('reembolsoRestauradoGlobal', {
+            detail: {
+              venta_id: ventaId,
+              venta_estado: data.venta_estado,
+              reembolso_id: data.reembolso_id
+            }
+          }));
+        }
+        
+        // Evento para comunicación entre ventanas/pestañas
+        window.postMessage({
+          type: 'reembolso_restaurado',
+          venta_estado: data.venta_estado,
+          reembolso_id: data.reembolso_id
+        }, '*');
+        
+        // Evento personalizado del DOM
+        document.dispatchEvent(new CustomEvent('reembolsoRestaurado', {
+          detail: {
+            venta_estado: data.venta_estado,
+            reembolso_id: data.reembolso_id
+          }
+        }));
+      }
+      
+      // Remover la notificación de eliminación
+      const notification = button.closest('.notification');
+      if (notification) {
+        notification.remove();
+      }
+    } else {
+      // Mostrar error
+      alert('Error al restaurar el reembolso: ' + data.message);
+      
+      // Restaurar botón
+      button.disabled = false;
+      button.textContent = 'Deshacer';
+      button.style.opacity = '1';
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Error al restaurar el reembolso');
+    
+    // Restaurar botón
+    button.disabled = false;
+    button.textContent = 'Deshacer';
+    button.style.opacity = '1';
+  });
+}
+
+// Función para agregar reembolso restaurado a la tabla
+function agregarReembolsoATabla(reembolsoData, ventaEstado = null) {
+  console.log('Agregando reembolso restaurado a la tabla:', reembolsoData, 'Estado venta:', ventaEstado);
+  
+  const accordionContainer = document.getElementById('reembolsosAccordion');
+  
+  // Si no hay contenedor, no hacer nada
+  if (!accordionContainer) return;
+  
+  // Si el contenedor tiene el mensaje de "no hay reembolsos", limpiarlo
+  if (accordionContainer.querySelector('.alert')) {
+    accordionContainer.innerHTML = '';
+  }
+  
+  // Crear el HTML del acordeón del reembolso
+  const acordeonHTML = `
+    <div class="accordion-item mb-2" style="opacity: 0; transform: translateX(20px);">
+      <h2 class="accordion-header" id="heading${reembolsoData.id_reembolso}">
+        <div class="d-flex align-items-center justify-content-between w-100">
+          <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${reembolsoData.id_reembolso}" aria-expanded="false" aria-controls="collapse${reembolsoData.id_reembolso}">
+            <span class="fw-bold me-5"><i class="bi bi-arrow-return-left me-3"></i>Reembolso #${reembolsoData.numero_reembolso}</span>
+            <span class="me-4"><i class="bi bi-calendar3"></i> ${reembolsoData.fecha_hora}</span>
+            <span class="me-4"><i class="bi bi-cash-coin"></i> $${reembolsoData.total_devuelto.toLocaleString()}</span>
+            <span class="me-4"><i class="bi bi-person"></i> 
+              ${reembolsoData.usuario_nombre !== 'Sin usuario' ? reembolsoData.usuario_nombre : '<span class="text-muted fst-italic">Sin usuario</span>'}
+            </span>
+            <span class="obs-label me-4"><i class="bi bi-chat-left-text"></i> Observaciones: 
+              ${reembolsoData.observaciones ? reembolsoData.observaciones.substring(0, 30) + (reembolsoData.observaciones.length > 30 ? '...' : '') : '<span class="text-muted fst-italic">Sin observaciones</span>'}
+            </span>
+          </button>
+          <div class="btn-group">
+            <button type="button" class="btn btn-danger btn-sm" title="Cancelar reembolso" data-bs-toggle="modal" data-bs-target="#cancelarReembolsoModal" data-id="${reembolsoData.id_reembolso}" data-venta="${reembolsoData.venta_numero}" data-numero="${reembolsoData.numero_reembolso}">
+              <i class="bi bi-x-circle"></i>
+            </button>
+          </div>
+        </div>
+      </h2>
+      <div id="collapse${reembolsoData.id_reembolso}" class="accordion-collapse collapse" aria-labelledby="heading${reembolsoData.id_reembolso}" data-bs-parent="#reembolsosAccordion">
+        <div class="accordion-body px-4 py-4">
+          <div class="row">
+            <div class="col-md-8">
+              <h6 class="fw-bold text-primary mb-3"><i class="bi bi-box-seam me-2"></i>Productos reembolsados</h6>
+              <div class="table-responsive">
+                <table class="table table-bordered align-middle text-center mb-0" style="width: 100%;">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Producto</th>
+                      <th>Cantidad</th>
+                      <th>Precio unitario</th>
+                      <th>Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${reembolsoData.detalles.map(detalle => `
+                      <tr>
+                        <td>${detalle.producto_nombre}</td>
+                        <td><span class="badge bg-secondary">${detalle.cantidad} unid.</span></td>
+                        <td>$${detalle.precio_unitario.toLocaleString()}</td>
+                        <td>$${detalle.monto.toLocaleString()}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th colspan="3" class="text-end">Total reembolso:</th>
+                      <th>$${reembolsoData.total_devuelto.toLocaleString()}</th>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <h6 class="fw-bold text-primary mb-3"><i class="bi bi-info-circle me-2"></i>Información del reembolso</h6>
+              <div class="card bg-light">
+                <div class="card-body px-4 py-3">
+                  <div class="mb-3">
+                    <strong>Venta original:</strong><br>
+                    <a href="/ventas/editar/${reembolsoData.venta_id}/" class="text-decoration-none">
+                      <i class="bi bi-receipt me-1"></i>Venta #${reembolsoData.venta_numero}
+                    </a>
+                  </div>
+                  <div class="mb-3">
+                    <strong>Fecha de reembolso:</strong><br>
+                    <i class="bi bi-calendar3 me-1"></i>${reembolsoData.fecha_hora}
+                  </div>
+                  <div class="mb-3">
+                    <strong>Usuario:</strong><br>
+                    <i class="bi bi-person me-1"></i>
+                    ${reembolsoData.usuario_nombre !== 'Sin usuario' ? reembolsoData.usuario_nombre : '<span class="text-muted fst-italic">Sin usuario</span>'}
+                  </div>
+                  <div class="mb-3">
+                    <strong>Estado de la venta:</strong><br>
+                    ${(() => {
+                      let estadoTexto = 'Completada';
+                      let estadoClase = 'bg-success';
+                      
+                      if (ventaEstado) {
+                        switch (ventaEstado) {
+                          case 'COMPLETADA':
+                            estadoTexto = 'Completada';
+                            estadoClase = 'bg-success';
+                            break;
+                          case 'PARCIALMENTE_REEMBOLSADA':
+                            estadoTexto = 'Parcialmente Reembolsada';
+                            estadoClase = 'bg-warning';
+                            break;
+                          case 'REEMBOLSADA':
+                            estadoTexto = 'Reembolsada';
+                            estadoClase = 'bg-danger';
+                            break;
+                          default:
+                            estadoTexto = 'Completada';
+                            estadoClase = 'bg-success';
+                        }
+                      }
+                      
+                      return `<span class="badge ${estadoClase}">${estadoTexto}</span>`;
+                    })()}
+                  </div>
+                  ${reembolsoData.observaciones ? `
+                  <div class="mb-0">
+                    <strong>Observaciones:</strong><br>
+                    <i class="bi bi-chat-left-text me-1"></i>${reembolsoData.observaciones}
+                  </div>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Agregar el acordeón al inicio del contenedor
+  accordionContainer.insertAdjacentHTML('afterbegin', acordeonHTML);
+  
+  // Animar la entrada del nuevo acordeón
+  const nuevoAcordeon = accordionContainer.querySelector('.accordion-item');
+  if (nuevoAcordeon) {
+    setTimeout(() => {
+      nuevoAcordeon.style.transition = 'all 0.3s ease';
+      nuevoAcordeon.style.opacity = '1';
+      nuevoAcordeon.style.transform = 'translateX(0)';
+    }, 10);
+  }
+}
+
+// Función para actualizar la tabla de reembolsos dinámicamente
+function actualizarTablaReembolsos(reembolsoId, ventaEstado = null) {
+  console.log('Actualizando tabla de reembolsos, eliminando reembolso:', reembolsoId, 'Estado venta:', ventaEstado);
+  
+  // Buscar el acordeón del reembolso eliminado
+  const acordeonItem = document.querySelector(`#heading${reembolsoId}`).closest('.accordion-item');
+  
+  if (acordeonItem) {
+    // Ocultar el acordeón con animación
+    acordeonItem.style.transition = 'all 0.3s ease';
+    acordeonItem.style.opacity = '0';
+    acordeonItem.style.transform = 'translateX(-20px)';
+    
+    setTimeout(() => {
+      acordeonItem.remove();
+      
+      // Verificar si no quedan reembolsos
+      const reembolsosRestantes = document.querySelectorAll('.accordion-item');
+      if (reembolsosRestantes.length === 0) {
+        // Si no quedan reembolsos, mostrar mensaje
+        const accordionContainer = document.getElementById('reembolsosAccordion');
+        if (accordionContainer) {
+          accordionContainer.innerHTML = `
+            <div class="text-center px-4 py-4">
+              <div class="alert alert-info mb-0">No hay reembolsos registrados.</div>
+            </div>
+          `;
+        }
+      }
+      
+      // Si se proporcionó el estado de la venta, actualizar el estado en la información del reembolso
+      if (ventaEstado) {
+        // Buscar todos los badges de estado de venta en los reembolsos restantes
+        const estadoBadges = document.querySelectorAll('.badge');
+        estadoBadges.forEach(badge => {
+          if (badge.textContent.includes('Reembolsada') || badge.textContent.includes('Completada')) {
+            // Actualizar el estado según el nuevo estado de la venta
+            let nuevoEstado = '';
+            let nuevaClase = '';
+            
+            switch (ventaEstado) {
+              case 'COMPLETADA':
+                nuevoEstado = 'Completada';
+                nuevaClase = 'bg-success';
+                break;
+              case 'PARCIALMENTE_REEMBOLSADA':
+                nuevoEstado = 'Parcialmente Reembolsada';
+                nuevaClase = 'bg-warning';
+                break;
+              case 'REEMBOLSADA':
+                nuevoEstado = 'Reembolsada';
+                nuevaClase = 'bg-danger';
+                break;
+              default:
+                nuevoEstado = 'Completada';
+                nuevaClase = 'bg-success';
+            }
+            
+            badge.textContent = nuevoEstado;
+            badge.className = `badge ${nuevaClase}`;
+          }
+        });
+      }
+    }, 300);
+  }
+}
+
+// Función para mostrar mensaje en página
+function mostrarMensajeEnPagina(mensaje, tipo) {
+  // Crear el contenedor de notificaciones si no existe
+  let notificationContainer = document.getElementById('notification-container');
+  if (!notificationContainer) {
+    notificationContainer = document.createElement('div');
+    notificationContainer.id = 'notification-container';
+    notificationContainer.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 350px;
+    `;
+    document.body.appendChild(notificationContainer);
+  }
+  
+  // Crear la notificación
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  const bgColor = tipo === 'success' ? '#198754' : '#dc3545';
+  notification.style.cssText = `
+    background: ${bgColor};
+    color: white;
+    padding: 16px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateX(400px);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    position: relative;
+    overflow: hidden;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+  `;
+  
+  // Agregar barra de progreso
+  const progressBar = document.createElement('div');
+  progressBar.style.cssText = `
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.3);
+    width: 100%;
+    transform: scaleX(1);
+    transform-origin: left;
+    transition: transform 5s linear;
+  `;
+  
+  notification.appendChild(progressBar);
+  
+  // Contenido de la notificación
+  notification.innerHTML += `
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="flex: 1;">
+        <div style="font-size: 16px; font-weight: 600; text-align: center;">
+          ${mensaje}
+        </div>
+      </div>
+      <button onclick="this.parentElement.parentElement.remove()" 
+              style="background: none; border: none; color: white; font-size: 18px; cursor: pointer; padding: 0; margin-left: 12px; opacity: 0.7; transition: opacity 0.2s;">
+        ×
+      </button>
+    </div>
+  `;
+  
+  // Agregar la notificación al contenedor
+  notificationContainer.appendChild(notification);
+  
+  // Animar entrada
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)';
+  }, 10);
+  
+  // Animar barra de progreso
+  setTimeout(() => {
+    progressBar.style.transform = 'scaleX(0)';
+  }, 100);
+  
+  // Auto-remover después de 5 segundos
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.style.transform = 'translateX(400px)';
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.remove();
+        }
+      }, 300);
+    }
+  }, 5000);
+}
+
+// Configurar el formulario de cancelar reembolso
+document.addEventListener('DOMContentLoaded', function() {
+  const cancelarReembolsoForm = document.getElementById('cancelarReembolsoForm');
+  
+  if (cancelarReembolsoForm) {
+    cancelarReembolsoForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(this);
+      const submitButton = this.querySelector('button[type="submit"]');
+      const originalText = submitButton.innerHTML;
+      
+      // Cambiar estado del botón
+      submitButton.disabled = true;
+      submitButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Cancelando...';
+      
+      fetch('/ventas/reembolsos/eliminar/' + formData.get('id') + '/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+        }
+      })
+      .then(response => {
+        console.log('Respuesta de cancelación recibida:', response);
+        return response.json();
+      })
+      .then(data => {
+        if (data) {
+          console.log('Datos de cancelación recibidos:', data);
+          
+          if (data.success) {
+            // Cancelación exitosa, cerrar el modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('cancelarReembolsoModal'));
+            modal.hide();
+            
+            // Mostrar mensaje con botón deshacer
+            mostrarMensajeConDeshacer(data.message, data.reembolso_id);
+            
+            // Actualizar la tabla dinámicamente
+            actualizarTablaReembolsos(data.reembolso_id, data.venta_estado);
+            
+            // Marcar en localStorage que se canceló un reembolso para esta venta
+            if (data.venta_estado) {
+              const ventaId = data.venta_id;
+              if (ventaId) {
+                console.log('Marcando reembolso cancelado para venta:', ventaId);
+                localStorage.setItem(`reembolso_cancelado_${ventaId}`, Date.now().toString());
+                
+                // Usar BroadcastChannel para comunicación entre pestañas
+                try {
+                  const channel = new BroadcastChannel('reembolso_updates');
+                  channel.postMessage({
+                    venta_id: ventaId,
+                    action: 'cancelado',
+                    venta_estado: data.venta_estado,
+                    reembolso_id: data.reembolso_id
+                  });
+                  channel.close();
+                } catch (e) {
+                  console.log('BroadcastChannel no disponible, usando eventos alternativos');
+                }
+                
+                // Disparar evento personalizado para comunicación entre pestañas (respaldo)
+                window.dispatchEvent(new CustomEvent('reembolsoCanceladoGlobal', {
+                  detail: {
+                    venta_id: ventaId,
+                    venta_estado: data.venta_estado,
+                    reembolso_id: data.reembolso_id
+                  }
+                }));
+              }
+              
+              // Evento para comunicación entre ventanas/pestañas
+              window.postMessage({
+                type: 'reembolso_cancelado',
+                venta_estado: data.venta_estado,
+                reembolso_id: data.reembolso_id
+              }, '*');
+              
+              // Evento personalizado del DOM
+              document.dispatchEvent(new CustomEvent('reembolsoCancelado', {
+                detail: {
+                  venta_estado: data.venta_estado,
+                  reembolso_id: data.reembolso_id
+                }
+              }));
+            }
+          } else {
+            // Error
+            alert('Error: ' + data.message);
+          }
+          
+          // Restaurar botón
+          submitButton.disabled = false;
+          submitButton.innerHTML = originalText;
+        }
+      })
+      .catch(error => {
+        console.error('Error en cancelación:', error);
+        alert('Error al cancelar el reembolso');
+        
+        // Restaurar botón
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText;
+      });
+      
+      return false;
+    });
+  }
+});
+document.addEventListener('DOMContentLoaded', function() {
+  // Inicializar tooltips si existen
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+  })
+  
+  // Manejar el modal de cancelar reembolso
+  const cancelarReembolsoModal = document.getElementById('cancelarReembolsoModal');
+  const cancelarReembolsoForm = document.getElementById('cancelarReembolsoForm');
+  
+  cancelarReembolsoModal.addEventListener('show.bs.modal', function(event) {
+    const button = event.relatedTarget;
+    const reembolsoId = button.getAttribute('data-id');
+    const ventaId = button.getAttribute('data-venta');
+    const numeroReembolso = button.getAttribute('data-numero');
+    
+    // Actualizar el campo hidden con el ID correcto
+    const cancelarId = document.getElementById('cancelar-id');
+    if (cancelarId) {
+      cancelarId.value = reembolsoId;
+    }
+    
+    // Actualizar el texto del modal
+    const cancelarReembolso = document.getElementById('cancelar-reembolso');
+    const cancelarVenta = document.getElementById('cancelar-venta');
+    if (cancelarReembolso) {
+      cancelarReembolso.textContent = `#${numeroReembolso}`;
+    }
+    if (cancelarVenta) {
+      cancelarVenta.textContent = ventaId;
+    }
+    
+    // Actualizar la acción del formulario
+    if (cancelarReembolsoForm) {
+      cancelarReembolsoForm.action = `/ventas/reembolsos/eliminar/${reembolsoId}/`;
+    }
+  });
+})
+</script>
+</div>
+{% endblock %} 
