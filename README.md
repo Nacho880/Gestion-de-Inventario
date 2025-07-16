@@ -183,15 +183,3 @@ git push origin nombre-rama
 - Verificar que estés en la rama correcta: `git branch`
 - Verificar estado: `git status`
 
-## 📞 Contacto y Soporte
-
-- **Repositorio**: https://github.com/Reta-001/management-system
-- **Issues**: Usar la sección Issues de GitHub para reportar bugs o solicitar funcionalidades
-
-## 📄 Licencia
-
-Este proyecto es privado y está destinado únicamente para uso interno del equipo de desarrollo.
-
----
-
-**¡Gracias por contribuir al proyecto! 🎉** 
