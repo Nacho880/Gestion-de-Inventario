@@ -84,7 +84,7 @@ El proyecto estará disponible en: http://127.0.0.1:8000/
 ```
 proyecto_principal/
 ├── categoria/          # Gestión de categorías de productos
-├── compras/           # Sistema de compras a proveedores
+├── compra/            # Sistema de compras a proveedores
 ├── estadistica/       # Reportes y estadísticas
 ├── home/              # Página principal y modelos base
 ├── producto/          # Gestión de productos
